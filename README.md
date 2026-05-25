@@ -89,11 +89,10 @@ CodeSage
 
 | Layer | Technology | Notes |
 |---|---|---|
-| Frontend | React + Tailwind CSS | Vite for build tooling |
-| Backend | Python (FastAPI) | REST API, Claude/Gemini integration |
-| Database | Supabase (PostgreSQL) | Auth + storage |
-| AI API | **Google Gemini 2.5 Flash** | Free tier — see below |
-| Hosting | Vercel (frontend) + Railway (backend) | |
+| Frontend | React + Vanilla CSS | Vite for build tooling |
+| Backend | Python (Native `http.server`) | Zero-dependency REST API |
+| Storage | In-Memory Dynamic Cache | Simple, lightweight submission history |
+| Analysis | Heuristics Engine | Diagnoses programming errors instantly |
 
 ---
 
@@ -152,24 +151,20 @@ Get your free API key at [aistudio.google.com](https://aistudio.google.com).
 
 ```
 codesage/
-├── client/                  # React frontend (Vite + Tailwind)
+├── frontend/                # React frontend (Vite + Vanilla CSS)
 │   ├── src/
-│   │   ├── pages/           # Home, Analyze, Dashboard, Learn, Pricing
-│   │   ├── components/      # Shared UI components
-│   │   └── hooks/           # Custom React hooks
+│   │   ├── pages/           # Home, Analyze, Dashboard, Learn
+│   │   └── components/      # Shared UI components (Header, Footer)
 │   └── public/
 │
-├── server/                  # Python backend (FastAPI)
-│   ├── main.py              # App entry point
-│   ├── routes/              # API route definitions
-│   ├── controllers/         # Business logic
-│   └── services/
-│       ├── gemini.py        # Gemini API integration
-│       └── supabase.py      # Database queries
+├── backend/                 # Zero-dependency Python backend
+│   ├── app/
+│   │   ├── main.py          # HTTP server entry point (port 8000)
+│   │   └── analyzer.py      # Local tutoring analysis engine
+│   └── requirements.txt     # Dependency fallbacks
 │
-├── docs/                    # Design assets and documentation
-├── .env.example
-└── README.md
+├── changes.md               # Change log documentation
+└── README.md                # Project documentation
 ```
 
 ---
@@ -205,52 +200,26 @@ codesage/
 ### Prerequisites
 
 - Node.js v18+ (for React frontend)
-- Python 3.11+ (for FastAPI backend)
-- Supabase account (free tier)
-- Google Gemini API key (free — no credit card)
+- Python 3.11+ (for Python backend)
 
-### Installation
+### Running the Project
 
+To start the full-stack application, run the backend and frontend in separate terminals:
+
+#### 1. Start the Backend API Server
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/codesage.git
-cd codesage
+cd backend
+python -m app.main
+```
+*The backend server starts on port `8000`. It operates as a zero-dependency service with an in-memory session log cache.*
 
-# --- Frontend ---
-cd client
+#### 2. Start the Frontend Developer Server
+```bash
+cd frontend
 npm install
-cp .env.example .env.local
 npm run dev
-
-# --- Backend ---
-cd ../server
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn main:app --reload
 ```
-
-Frontend runs at `http://localhost:5173`  
-Backend runs at `http://localhost:8000`
-
----
-
-## Environment Variables
-
-**Backend (`server/.env`)**
-```env
-GEMINI_API_KEY=your_gemini_api_key_from_aistudio
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_SERVICE_KEY=your_supabase_service_role_key
-```
-
-**Frontend (`client/.env.local`)**
-```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_API_BASE_URL=http://localhost:8000
-```
+*The frontend starts on port `5173`. Hot Module Replacement (HMR) is active for CSS and React components.*
 
 ---
 
