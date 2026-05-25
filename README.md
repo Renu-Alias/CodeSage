@@ -276,16 +276,4 @@ Please open an issue first for major changes so we can discuss the approach.
 
 ---
 
-## License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-## Author
-
-Built with 💜 for students learning to code.
-
----
-
 *CodeSage — Debug smarter. Learn faster. Code better.*
