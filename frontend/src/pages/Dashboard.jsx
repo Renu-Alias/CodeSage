@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Download, Flame, Rocket, Award, Bug, Play, HelpCircle } from 'lucide-react';
+import { Search, Download, Flame, Rocket, Award, Bug, Play, HelpCircle, ChevronRight } from 'lucide-react';
 
 export default function Dashboard({ setCurrentPage, setSampleCode }) {
   const [searchTerm, setSearchTerm] = useState("");
