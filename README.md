@@ -2,14 +2,6 @@
 
 > AI-powered code analysis and tutoring platform that helps beginner programmers debug, understand, and improve their code through personalized feedback and learning insights.
 
-![CodeSage Banner](https://placehold.co/900x200/5C4FC7/FFFFFF?text=CodeSage+—+Debug+Smarter.+Learn+Faster.)
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: In Development](https://img.shields.io/badge/Status-In%20Development-orange.svg)]()
-[![Made for Students](https://img.shields.io/badge/Made%20for-Students-purple.svg)]()
-[![API: Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-4285F4.svg)]()
-
----
 
 ## What is CodeSage?
 
