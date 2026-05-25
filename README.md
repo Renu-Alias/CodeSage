@@ -1,2 +1,291 @@
-# CodeSage
-AI-powered code analysis and tutoring platform that helps beginner programmers debug, understand and improve their code through personalized feedback and learning insights.
+# CodeSage 🧙
+
+> AI-powered code analysis and tutoring platform that helps beginner programmers debug, understand, and improve their code through personalized feedback and learning insights.
+
+![CodeSage Banner](https://placehold.co/900x200/5C4FC7/FFFFFF?text=CodeSage+—+Debug+Smarter.+Learn+Faster.)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Status: In Development](https://img.shields.io/badge/Status-In%20Development-orange.svg)]()
+[![Made for Students](https://img.shields.io/badge/Made%20for-Students-purple.svg)]()
+[![API: Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-4285F4.svg)]()
+
+---
+
+## What is CodeSage?
+
+CodeSage is a web platform designed for students learning to code. Unlike generic AI debuggers, CodeSage acts as a **personal tutor** — it doesn't just fix your code, it explains *why* something went wrong, adapts its language to your level, and tracks your mistakes over time to build a personalised weakness report.
+
+---
+
+## Why CodeSage? — Our USPs
+
+### 🧠 1. Learning Path Intelligence *(Core USP)*
+Most debuggers give you a one-shot fix and forget you exist. CodeSage tracks your errors **across every session** and builds a personalised weakness report — identifying your top recurring mistake patterns (e.g. "loop logic", "null handling", "variable scoping") and recommending targeted exercises to fix them. No other student-focused tool does longitudinal mistake tracking like this.
+
+### 🎓 2. Beginner-First Explanations
+Every error is explained at **your level**, not a senior developer's. Toggle between Beginner and Intermediate mode. Beginner mode uses plain English and analogies — *"Your loop never stops because there's no exit condition — think of a song on repeat with no stop button."* Jargon only appears when you're ready for it.
+
+### 📈 3. Progress Tracking Over Time
+CodeSage stores your full upload history and plots your improvement over time. Watch your error count drop week over week. Your dashboard becomes a mirror of your growth as a programmer.
+
+### 🏫 4. Classroom Mode *(v3.0)*
+Built with teachers in mind. Instructors get a dedicated dashboard showing class-wide error trends, individual student progress, and the ability to assign exercises based on common class mistakes — turning CodeSage into a full teaching assistant.
+
+---
+
+## Sitemap
+
+```
+CodeSage
+│
+├── Home
+│   ├── Hero + CTA
+│   ├── How it works (3 steps)
+│   └── Social proof / Testimonials
+│
+├── Analyze             ← Core tool
+│   ├── Code input (paste / upload)
+│   ├── Language selector (auto-detect)
+│   ├── Beginner / Intermediate toggle
+│   └── Output tabs
+│       ├── Errors (line references)
+│       ├── Suggestions (best practices)
+│       ├── Explanation (plain English)
+│       └── Fixed code (diff view)
+│
+├── Dashboard           ← Requires login
+│   ├── Upload history (timestamped)
+│   ├── Progress chart (errors over time)
+│   ├── Weakness report (top mistake categories)
+│   └── Badges & streaks
+│
+├── Learn               ← Requires login (Pro)
+│   ├── Auto-generated exercises
+│   ├── Curated articles per error type
+│   └── Mini coding challenges
+│
+├── Pricing
+│   ├── Free tier
+│   ├── Pro tier
+│   └── Classroom plan
+│
+├── Help
+│   ├── FAQs
+│   └── Docs
+│
+└── Auth (Login / Sign up)
+    └── Onboarding flow
+        ├── Language picker
+        └── Skill level selector
+```
+
+---
+
+## Features
+
+- **Error detection** — line-by-line bug detection across all major languages
+- **Beginner-friendly explanations** — toggle between Beginner and Intermediate modes
+- **Improvement suggestions** — best practices, cleaner patterns, idiomatic code
+- **Fixed code view** — corrected snippet with diffs highlighted
+- **Upload history** — every submission saved; revisit past feedback anytime
+- **Learning Path Intelligence** *(Pro)* — recurring mistake tracking + personalised weakness report
+- **Multi-language support** — Python, JavaScript, Java, C++, TypeScript, Go, Rust, and more
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Notes |
+|---|---|---|
+| Frontend | React + Tailwind CSS | Vite for build tooling |
+| Backend | Python (FastAPI) | REST API, Claude/Gemini integration |
+| Database | Supabase (PostgreSQL) | Auth + storage |
+| AI API | **Google Gemini 2.5 Flash** | Free tier — see below |
+| Hosting | Vercel (frontend) + Railway (backend) | |
+
+---
+
+## AI API — Google Gemini 2.5 Flash (Free Tier)
+
+After evaluating all major free AI APIs, **Google Gemini 2.5 Flash** is the recommended choice for CodeSage.
+
+### Why Gemini?
+
+| API | Free Tier | Code Quality | Python SDK | Verdict |
+|---|---|---|---|---|
+| **Gemini 2.5 Flash** | 60 req/min, no credit card | ⭐⭐⭐⭐⭐ | ✅ Official | ✅ **Best pick** |
+| Groq (Llama 4) | ~6,000 req/day | ⭐⭐⭐⭐ | ✅ | Fast but weaker reasoning |
+| OpenAI GPT-4o | $5 credit only | ⭐⭐⭐⭐⭐ | ✅ | Not truly free |
+| Mistral Large 2 | 5 RPM only | ⭐⭐⭐⭐ | ✅ | Too rate-limited for MVP |
+| Hugging Face | Rate-limited, slow | ⭐⭐⭐ | ✅ | Inconsistent |
+
+**Key reasons:**
+- Most generous free tier of any major provider — 60 requests/minute with no credit card required
+- Excellent code understanding and explanation quality
+- Official Python SDK (`google-genai`) integrates cleanly with FastAPI
+- Large context window handles long code snippets without chunking
+
+### Basic Integration (Python / FastAPI)
+
+```python
+from google import genai
+
+client = genai.Client(api_key="YOUR_GEMINI_API_KEY")
+
+def analyze_code(code: str, language: str, level: str) -> str:
+    prompt = f"""
+    You are CodeSage, a coding tutor for {level} students.
+    Analyze the following {language} code.
+    Return:
+    1. All bugs with line numbers
+    2. Improvement suggestions
+    3. A plain-English explanation suited for a {level}
+    4. A corrected version of the code
+
+    Code:
+    {code}
+    """
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+    return response.text
+```
+
+Get your free API key at [aistudio.google.com](https://aistudio.google.com).
+
+---
+
+## Project Structure
+
+```
+codesage/
+├── client/                  # React frontend (Vite + Tailwind)
+│   ├── src/
+│   │   ├── pages/           # Home, Analyze, Dashboard, Learn, Pricing
+│   │   ├── components/      # Shared UI components
+│   │   └── hooks/           # Custom React hooks
+│   └── public/
+│
+├── server/                  # Python backend (FastAPI)
+│   ├── main.py              # App entry point
+│   ├── routes/              # API route definitions
+│   ├── controllers/         # Business logic
+│   └── services/
+│       ├── gemini.py        # Gemini API integration
+│       └── supabase.py      # Database queries
+│
+├── docs/                    # Design assets and documentation
+├── .env.example
+└── README.md
+```
+
+---
+
+## Roadmap
+
+### MVP (v1.0)
+- [x] Project setup and design system
+- [ ] Code input + language detection
+- [ ] Gemini API integration for analysis
+- [ ] Error, suggestion, explanation, and fixed-code output tabs
+- [ ] Beginner / Intermediate explanation toggle
+- [ ] User auth via Supabase
+- [ ] Upload history with timestamps
+
+### v2.0 — Learning Layer
+- [ ] Progress chart (errors over time)
+- [ ] Weakness report — recurring mistake categories
+- [ ] Targeted exercise recommendations
+- [ ] Curated article links per error type
+- [ ] Badges and streaks
+
+### v3.0 — Classroom
+- [ ] Teacher dashboard
+- [ ] Class-wide progress reports
+- [ ] Classroom plan billing
+- [ ] Assignment mode
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js v18+ (for React frontend)
+- Python 3.11+ (for FastAPI backend)
+- Supabase account (free tier)
+- Google Gemini API key (free — no credit card)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/codesage.git
+cd codesage
+
+# --- Frontend ---
+cd client
+npm install
+cp .env.example .env.local
+npm run dev
+
+# --- Backend ---
+cd ../server
+python -m venv venv
+source venv/bin/activate      # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn main:app --reload
+```
+
+Frontend runs at `http://localhost:5173`  
+Backend runs at `http://localhost:8000`
+
+---
+
+## Environment Variables
+
+**Backend (`server/.env`)**
+```env
+GEMINI_API_KEY=your_gemini_api_key_from_aistudio
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key
+```
+
+**Frontend (`client/.env.local`)**
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! To get started:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m 'Add your feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a Pull Request
+
+Please open an issue first for major changes so we can discuss the approach.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## Author
+
+Built with 💜 for students learning to code.
+
+---
+
+*CodeSage — Debug smarter. Learn faster. Code better.*
