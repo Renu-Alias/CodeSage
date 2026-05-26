@@ -37,8 +37,12 @@ Scaffolded a full-stack monorepo layout containing isolated client and server sp
   - HTML self-closing void element consistency.
   - CSS missing units and invalid color values.
   - Infinite Loops (`while True` or `while(true)` blocks devoid of break keywords).
-- Strict demo snippet matching via normalized (comment-stripped, whitespace-removed) comparison to prevent false positives.
-- Beginner-friendly explanations with plain English and everyday analogies.
+- Multi-line bracket/quote tracking via `_find_unclosed_multiline()` — detects unmatched `(`, `[`, `{` and unclosed string literals across the entire code, not just per-line.
+- Demo snippet matching changed from normalized structural comparison to **exact string match** — only the exact default demo text matches, preventing user code from hijacking demo results.
+- Removed frontend `runLocalAnalysis` fake predefined matchers (was matching any code containing `"calculate_average"` or `"prices"`) — replaced with proper error state when backend is unreachable.
+- Removed frontend hardcoded initial analysis state — analysis starts empty until user clicks Analyze.
+- Duplicate error suppression — missing colon regex check skips if AST already reported a SyntaxError on that line.
+- Beginner-friendly explanations with plain English and everyday analogies (cookies, recipes, sticky notes).
 - Fixed code generation with zero-division guards.
 
 ### Created: `backend/app/gemini_service.py`

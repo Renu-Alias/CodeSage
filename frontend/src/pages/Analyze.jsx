@@ -190,53 +190,10 @@ export default function Analyze({ sampleCode, setSampleCode }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(true);
 
-  // Analysis result states (pre-populated with mock data matching the initial average calculator mockup!)
-  const [errors, setErrors] = useState([
-    {
-      line: 4,
-      type: "ZeroDivisionError",
-      message: "The function will raise a ZeroDivisionError if the input list 'numbers' is empty. When len(numbers) is 0, dividing by zero is undefined in Python."
-    },
-    {
-      line: 1,
-      type: "TypeError",
-      message: "Potential TypeError if 'numbers' contains non-numeric types. Ensure the list only contains integers or floats before calling sum()."
-    }
-  ]);
-  
-  const [suggestions, setSuggestions] = useState([
-    {
-      line: 3,
-      title: "Guard Clause",
-      message: "Use a guard clause at the start of the function to return 0 or None if the list is empty. This prevents deep nesting and handles empty inputs cleanly."
-    },
-    {
-      line: 1,
-      title: "Type Hinting",
-      message: "Add type hints like `numbers: list[float]` to make the expected argument clear to anyone reading the code."
-    }
-  ]);
-  
-  const [explanation, setExplanation] = useState(
-    "### How it works step-by-step:\n\n" +
-    "1. **`total = sum(numbers)`**:\n" +
-    "   This line calculates the sum of all elements inside the list `numbers`. For example, if `numbers` is `[2, 4, 6]`, then `sum(numbers)` returns `12`.\n\n" +
-    "2. **`return total / len(numbers)`**:\n" +
-    "   Here, the code tries to divide the total sum by the length (count of numbers) of the list to get the average. For `[2, 4, 6]`, the length is `3`. So `12 / 3` is `4.0`.\n\n" +
-    "### Why it failed:\n" +
-    "- **The Zero Division Trap**: If a user runs your function with an empty list `[]`, the computer calculates `len([])` which is `0`. The code then tries to do `total / 0`. Since dividing any number by zero is mathematically impossible, Python panics and crashes with a **`ZeroDivisionError`**!\n" +
-    "- **Type assumptions**: If the list contains strings like `['apple', 'banana']`, `sum()` will crash with a **`TypeError`** because you cannot add strings and numbers."
-  );
-
-  const [fixedCode, setFixedCode] = useState(
-    "def calculate_average(numbers):\n" +
-    "    # Check if list is empty to prevent division by zero\n" +
-    "    if not numbers:\n" +
-    "        return 0\n" +
-    "    \n" +
-    "    total = sum(numbers)\n" +
-    "    return total / len(numbers)"
-  );
+  const [errors, setErrors] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [explanation, setExplanation] = useState("### Ready to analyze\n\nPaste your code and click **Analyze** to get started.");
+  const [fixedCode, setFixedCode] = useState("");
 
   // Sync if sampleCode changes from homepage click
   useEffect(() => {
@@ -279,14 +236,11 @@ export default function Analyze({ sampleCode, setSampleCode }) {
   const triggerAnalysis = async (currentCode, currentLang, currentMode) => {
     setLoading(true);
     setSaved(false);
-    
+
     try {
-      // Call local backend running on port 8000
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/analyze`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: currentCode,
           language: currentLang,
@@ -303,106 +257,23 @@ export default function Analyze({ sampleCode, setSampleCode }) {
         setExplanation(analysis.explanation);
         setFixedCode(analysis.fixed_code);
         setSaved(true);
+      } else if (response.status === 500) {
+        const errData = await response.json();
+        setErrors([{ line: 1, type: "ServerError", message: errData.detail || "Backend server error" }]);
+        setSuggestions([]);
+        setExplanation("### Server Error\n\nThe backend encountered an error processing your code. Make sure the backend server is running on port 8000.");
+        setFixedCode("");
       } else {
         throw new Error("Backend response error");
       }
     } catch (err) {
-      console.warn("FastAPI backend offline, running intelligent local fallback analysis:", err);
-      // Client-side local analyzer fallback for full offline capabilities!
-      setTimeout(() => {
-        runLocalAnalysis(currentCode, currentLang, currentMode);
-        setSaved(true);
-      }, 700);
+      setErrors([{ line: 1, type: "ConnectionError", message: "Cannot reach the backend server. Make sure the Python backend is running on port 8000." }]);
+      setSuggestions([]);
+      setExplanation("### Backend Offline\n\nStart the backend with:\n```bash\ncd backend\npython -m app.main\n```");
+      setFixedCode("");
     } finally {
       setLoading(false);
     }
-  };
-
-  const runLocalAnalysis = (currentCode, currentLang, currentMode) => {
-    // 1. Predefined standard average calculator template
-    if (currentCode.includes("calculate_average")) {
-      setErrors([
-        {
-          line: 4,
-          type: "ZeroDivisionError",
-          message: "The function will raise a ZeroDivisionError if the input list 'numbers' is empty. When len(numbers) is 0, dividing by zero is undefined in Python."
-        },
-        {
-          line: 1,
-          type: "TypeError",
-          message: "Potential TypeError if 'numbers' contains non-numeric types. Ensure the list only contains integers or floats before calling sum()."
-        }
-      ]);
-      setSuggestions([
-        {
-          line: 3,
-          title: "Guard Clause",
-          message: "Use a guard clause at the start of the function to return 0 or None if the list is empty. This prevents deep nesting and handles empty inputs cleanly."
-        }
-      ]);
-      setExplanation(
-        currentMode === "Beginner" 
-          ? "### How it works:\n1. Loops or accumulates values in list.\n2. Computes division by list length.\n### Trap:\nAn empty list length is 0, triggering division by zero!"
-          : "### Technical analysis:\n- Code suffers from missing array bounds checks and lack of dynamic type verification, causing critical Division-by-Zero runtime hazards under CPython standard float evaluation."
-      );
-      setFixedCode(
-        "def calculate_average(numbers):\n" +
-        "    if not numbers:\n" +
-        "        return 0\n" +
-        "    total = sum(numbers)\n" +
-        "    return total / len(numbers)"
-      );
-      return;
-    }
-
-    // 2. Predefined loop price mockup template
-    if (currentCode.includes("prices") && currentCode.includes("tax")) {
-      setErrors([
-        {
-          line: 4,
-          type: "NameError",
-          message: "Using singular 'price' inside the loop instead of indexed item or defining price first. Also, 'p' is undefined on line 5."
-        }
-      ]);
-      setSuggestions([
-        {
-          line: 3,
-          title: "Use Direct Iteration",
-          message: "Instead of iterating through indices using range(len(prices)), iterate over the list elements directly: `for price in prices:`."
-        }
-      ]);
-      setExplanation("### Loop Variable Scoping:\nInside the loop range(len(prices)), you attempted to access 'price' (singular) when you should access the array index 'prices[i]'.");
-      setFixedCode(
-        "def calculate_total(prices):\n" +
-        "    total = 0\n" +
-        "    for price in prices:\n" +
-        "        tax = price * 0.05\n" +
-        "        total += price + tax\n" +
-        "    return total"
-      );
-      return;
-    }
-
-    // 3. Heuristics fallback
-    const errs = [];
-    const sugs = [];
-    if (currentCode.includes("/") && !currentCode.includes("if")) {
-      errs.push({
-        line: linesCount,
-        type: "ZeroDivisionWarning",
-        message: "Division operator detected without verifying divisor is non-zero. Ensure variable is greater than 0 before division."
-      });
-    }
-    sugs.push({
-      line: 1,
-      title: "Add comments",
-      message: "Keep code clean by documenting functional blocks."
-    });
-
-    setErrors(errs);
-    setSuggestions(sugs);
-    setExplanation(`### Basic assessment:\nAnalyzed as a ${currentLang} module.\nFeedback covers structural code flow and edge-case guards.`);
-    setFixedCode(currentCode);
   };
 
   const handleAnalyzeClick = () => {

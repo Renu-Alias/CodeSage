@@ -146,7 +146,6 @@ def analyze_code(code: str, language: str, level: str) -> str:
     return response.text
 ```
 
-Get your free API key at [aistudio.google.com](https://aistudio.google.com).
 
 ---
 
