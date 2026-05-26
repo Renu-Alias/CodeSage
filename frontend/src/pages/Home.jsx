@@ -2,7 +2,7 @@ import React from 'react';
 import { ArrowRight, Code2, AlertTriangle, Lightbulb, Compass, Award, Star } from 'lucide-react';
 import { LANGUAGES } from '../constants/languages';
 
-export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan }) {
+export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan, isLoggedIn }) {
   const handleStartAnalysis = (codeType) => {
     if (codeType === 'demo') {
       setSampleCode({
@@ -271,7 +271,7 @@ export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan })
                 <li>✓ Basic explanations</li>
               </ul>
               
-              <button className="btn btn-secondary pricing-btn" onClick={() => { setSelectedPlan('free'); setCurrentPage('payment'); }}>
+              <button className="btn btn-secondary pricing-btn" onClick={() => { setSelectedPlan('free'); setCurrentPage(isLoggedIn ? 'payment' : 'login'); }}>
                 Get started
               </button>
             </div>
@@ -293,7 +293,7 @@ export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan })
                 <li>✓ Priority AI processing</li>
               </ul>
               
-              <button className="btn btn-primary pricing-btn" onClick={() => { setSelectedPlan('pro'); setCurrentPage('payment'); }}>
+              <button className="btn btn-primary pricing-btn" onClick={() => { setSelectedPlan('pro'); setCurrentPage(isLoggedIn ? 'payment' : 'login'); }}>
                 Start Pro trial
               </button>
             </div>
@@ -316,7 +316,7 @@ export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan })
                 <li>✓ LMS integration</li>
               </ul>
               
-              <button className="btn btn-secondary pricing-btn" onClick={() => { setSelectedPlan('classroom'); setCurrentPage('payment'); }}>
+              <button className="btn btn-secondary pricing-btn" onClick={() => { setSelectedPlan('classroom'); setCurrentPage(isLoggedIn ? 'payment' : 'login'); }}>
                 Get started
               </button>
             </div>

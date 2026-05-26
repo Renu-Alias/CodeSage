@@ -6,6 +6,10 @@ import Analyze from './pages/Analyze';
 import Dashboard from './pages/Dashboard';
 import Learn from './pages/Learn';
 import Payment from './pages/Payment';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import OnboardingLearning from './pages/OnboardingLearning';
+import OnboardingLevel from './pages/OnboardingLevel';
 import './App.css';
 
 function App() {
@@ -21,10 +25,19 @@ function App() {
     skillLevel: 'Beginner'
   });
 
+  // Protected routes: redirect to login if not authenticated
+  const protectedRoutes = ['analyze', 'dashboard', 'learn', 'payment'];
+  const activePage = protectedRoutes.includes(currentPage) && !isLoggedIn ? 'login' : currentPage;
+
   const renderPage = () => {
-    switch (currentPage) {
+    switch (activePage) {
       case 'home':
-        return <Home setCurrentPage={setCurrentPage} setSampleCode={setSampleCode} setSelectedPlan={setSelectedPlan} />;
+        return <Home
+          setCurrentPage={setCurrentPage}
+          setSampleCode={setSampleCode}
+          setSelectedPlan={setSelectedPlan}
+          isLoggedIn={isLoggedIn}
+        />;
       case 'analyze':
         return <Analyze sampleCode={sampleCode} setSampleCode={setSampleCode} />;
       case 'dashboard':
@@ -33,13 +46,21 @@ function App() {
         return <Learn setCurrentPage={setCurrentPage} />;
       case 'payment':
         return <Payment selectedPlan={selectedPlan} setCurrentPage={setCurrentPage} />;
+      case 'login':
+        return <Login setCurrentPage={setCurrentPage} setIsLoggedIn={setIsLoggedIn} />;
+      case 'signup':
+        return <Signup setCurrentPage={setCurrentPage} setIsLoggedIn={setIsLoggedIn} />;
+      case 'onboarding-learning':
+        return <OnboardingLearning setCurrentPage={setCurrentPage} setOnboardingData={setOnboardingData} />;
+      case 'onboarding-level':
+        return <OnboardingLevel setCurrentPage={setCurrentPage} onboardingData={onboardingData} setOnboardingData={setOnboardingData} />;
       default:
-        return <Home setCurrentPage={setCurrentPage} setSampleCode={setSampleCode} setSelectedPlan={setSelectedPlan} />;
+        return <Home setCurrentPage={setCurrentPage} setSampleCode={setSampleCode} setSelectedPlan={setSelectedPlan} isLoggedIn={isLoggedIn} />;
     }
   };
 
   // Do not render default Header/Footer on full-screen auth and onboarding pages
-  const isFullScreenPage = ['login', 'signup', 'onboarding-learning', 'onboarding-level'].includes(currentPage);
+  const isFullScreenPage = ['login', 'signup', 'onboarding-learning', 'onboarding-level'].includes(activePage);
 
   if (isFullScreenPage) {
     return (
@@ -52,7 +73,7 @@ function App() {
   return (
     <div className="app-container">
       <Header 
-        currentPage={currentPage} 
+        currentPage={activePage}
         setCurrentPage={setCurrentPage} 
         isLoggedIn={isLoggedIn}
         setIsLoggedIn={setIsLoggedIn}
