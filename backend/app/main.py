@@ -265,6 +265,38 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({"detail": str(e)}).encode('utf-8'))
+        elif path == "/api/create-subscription":
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                email = data.get("email", "")
+                plan = data.get("plan", "Pro")
+                cycle = data.get("billingCycle", "monthly")
+                amount = data.get("amount", 299)
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                
+                response_data = {
+                    "success": True,
+                    "message": f"Successfully subscribed {email} to {plan} plan ({cycle})!",
+                    "subscription": {
+                        "plan": plan,
+                        "billingCycle": cycle,
+                        "amount": amount,
+                        "status": "Active"
+                    }
+                }
+                self.wfile.write(json.dumps(response_data).encode('utf-8'))
+                
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"detail": str(e)}).encode('utf-8'))
         else:
             self.send_response(404)
             self.send_header('Content-Type', 'application/json')
