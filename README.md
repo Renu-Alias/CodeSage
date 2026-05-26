@@ -205,6 +205,25 @@ codesage/
 - Node.js v18+ (for React frontend)
 - Python 3.11+ (for Python backend)
 
+### Environment Setup
+
+Create `.env` files in both `backend/` and `frontend/`:
+
+**`backend/.env`**
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+BACKEND_PORT=8000
+ENVIRONMENT=development
+FRONTEND_URL=http://localhost:5173
+```
+
+**`frontend/.env`**
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+> `.env` files contain local configuration and secrets. They are listed in `.gitignore` and **must never be committed** to the repository.
+
 ### Running the Project
 
 To start the full-stack application, run the backend and frontend in separate terminals:
