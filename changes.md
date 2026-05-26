@@ -26,9 +26,30 @@ Scaffolded a full-stack monorepo layout containing isolated client and server sp
 - Coded a heuristic analysis engine diagnosing programming errors:
   - Python `ZeroDivisionError` (e.g. dividing values by un-validated variables or list counts).
   - Python `TypeError` (e.g. computing index variables directly or combining strings/integers).
+  - Python `SyntaxError` via `ast.parse` for real syntax error detection.
+  - Missing colons after Python keywords (`if`, `for`, `while`, `def`, `class`, etc.).
+  - Unclosed string quotes and mismatched brackets (all languages).
+  - Undefined variables/iterables in Python for-loops.
+  - Tab vs space mixed indentation detection.
   - JavaScript / TypeScript syntax omissions (e.g. missing semicolons in variable definitions).
+  - C/C++/C#/Dart uninitialized variables and missing semicolons.
+  - SQL `UPDATE`/`DELETE` without `WHERE` clause detection.
+  - HTML self-closing void element consistency.
+  - CSS missing units and invalid color values.
   - Infinite Loops (`while True` or `while(true)` blocks devoid of break keywords).
-- Built detailed, explainable response blocks tailored to mock code structures.
+- Strict demo snippet matching via normalized (comment-stripped, whitespace-removed) comparison to prevent false positives.
+- Beginner-friendly explanations with plain English and everyday analogies.
+- Fixed code generation with zero-division guards.
+
+### Created: `backend/app/gemini_service.py`
+- Integrated Google Gemini 2.5 Flash API for AI-powered code analysis.
+- Two prompt modes: beginner (plain English, analogies, line-by-line) and intermediate (technical).
+- Fallback to local analyzer when Gemini is unavailable or returns errors.
+
+### Updated: `backend/app/main.py`
+- Added Gemini API integration with fallback to local heuristic analyzer.
+- Environment variable support via `load_dotenv()`.
+- CORS configured with `FRONTEND_URL` from environment.
 
 ### Created: `backend/requirements.txt`
 - Configured standard backend packages (`fastapi`, `uvicorn`, `pydantic`) as fallback documentation indicators.
@@ -53,9 +74,31 @@ Scaffolded a full-stack monorepo layout containing isolated client and server sp
 ### Created: `frontend/src/components/Footer.jsx`
 - Built a site footer detailing site maps, copyrights, and terms of service policies.
 
+### Created: `frontend/src/constants/languages.js`
+- Centralized language definitions for 17 languages: Python, JavaScript, TypeScript, Java, C, C++, Go, Rust, Dart, Ruby, PHP, Swift, Kotlin, C#, SQL, HTML, CSS.
+- `extToLanguage()` maps file extensions to language keys.
+- `acceptExtensions()` generates HTML `accept` attribute for file uploads.
+- Used across Home, Analyze, and Dashboard pages.
+
 ### Created: `frontend/src/pages/Home.jsx`
 - Built the Landing page incorporating the hero block, how-it-works grids, and standard pricing blocks.
 - Embedded an **interactive weakness code editor preview** illustrating Python loop errors with a custom active insights popover.
+- Hero section language badges limited to first 7 languages + "+ MORE" link.
+- Pricing buttons redirect to login page if user is not authenticated.
+
+### Created: `frontend/src/pages/Login.jsx`
+- Login form with email/password fields and password visibility toggle.
+- Google social authentication button.
+- Sets `isLoggedIn` state on successful login and redirects to dashboard.
+
+### Created: `frontend/src/pages/Signup.jsx`
+- Signup form with name, email, and password fields.
+- Google social authentication button.
+- Redirects through onboarding flow (onboarding-learning → onboarding-level → dashboard) after signup.
+
+### Created: `frontend/src/pages/Payment.jsx`
+- Checkout page with plan summary (Pro/Classroom), card details form, and success state.
+- Auth-gated: redirects to login if user is not signed in.
 
 ### Created: `frontend/src/pages/Analyze.jsx`
 - Constructed the main workspace featuring:
@@ -73,8 +116,31 @@ Scaffolded a full-stack monorepo layout containing isolated client and server sp
 - Built an analytics dashboard displaying total counts, filters for languages, and lockable badge matrices.
 - Designed a **fully custom, responsive SVG Line Chart** representing error histories, utilizing curved vector paths and gradient fills under the data lines.
 
-### Replaced: `frontend/src/App.jsx` & `frontend/src/App.css`
-- Wired the primary page navigation engine, shared sample code states, header/footer shells, and dynamic grid layouts.
+### Updated: `frontend/src/App.jsx`
+- Added auth route gating: `/analyze`, `/dashboard`, `/learn`, `/payment` are protected behind `isLoggedIn` state.
+- Passing `isLoggedIn`, `setIsLoggedIn`, and `currentPlan` to child components.
+- Login and Signup pages handled separately (no auth gate).
+
+### Updated: `frontend/src/components/Header.jsx`
+- Navigation items include pricing (with scroll-to logic), login/signup when logged out.
+- Shows user profile and dashboard link when logged in.
+- Fixed Dashboard navbar disappearing bug by removing redundant login redirect.
+
+### Updated: `frontend/src/pages/Analyze.jsx`
+- Language selector now imports from `constants/languages.js` for consistent 17-language list.
+- `DEFAULT_SNIPPETS` and `DEFAULT_FILENAMES` maps provide language-specific starter code.
+- File upload accept attribute generated from `acceptExtensions()`.
+- API fetch URL uses `import.meta.env.VITE_API_URL` environment variable.
+
+### Updated: `frontend/src/pages/Dashboard.jsx`
+- Language filter dropdown uses centralized `languages.js` constants.
+- API fetch URL uses `import.meta.env.VITE_API_URL` environment variable.
+
+### Created: `frontend/.env`
+- Contains `VITE_API_URL=http://localhost:8000` for backend API.
+
+### Created: `backend/.env`
+- Contains `GEMINI_API_KEY`, `BACKEND_PORT=8000`, `ENVIRONMENT=development`, `FRONTEND_URL=http://localhost:5173`.
 
 ---
 

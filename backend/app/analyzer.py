@@ -1,25 +1,28 @@
 import re
+import ast
+
+# Demo snippets used by the frontend (used for strict matching only)
+DEMO_AVERAGE = "def calculate_average(numbers):\n    total = sum(numbers)\n    # Bug: division without zero check\n    return total / len(numbers)"
+DEMO_LOOP = "def calculate_total(prices):\n    total = 0\n    for i in range(len(prices)):\n        tax = i * price # Error here\n        total += p\n    return total"
 
 def analyze_code(code: str, language: str, mode: str = "Beginner") -> dict:
-    """
-    Analyzes student code, returning structured feedback across:
-    - errors: critical bugs, potential crashes
-    - suggestions: best practices, efficiency updates
-    - explanation: step-by-step beginner or intermediate explanations
-    - fixed_code: drop-in replacement with corrections
-    """
     code_stripped = code.strip()
-    
-    # 1. SPECIAL CASE: The exact mockup demo snippet
-    if "calculate_average" in code_stripped and ("len(numbers)" in code_stripped or "sum(numbers)" in code_stripped):
+
+    # Strict special case matching — only match the exact demo snippets
+    if _is_demo_match(code_stripped, DEMO_AVERAGE):
         return get_calculate_average_analysis(mode)
-    
-    # 2. SPECIAL CASE: The loop error preview from landing page
-    if "prices" in code_stripped and "tax = i * price" in code_stripped:
+    if _is_demo_match(code_stripped, DEMO_LOOP):
         return get_loop_price_analysis(mode)
 
-    # 3. GENERAL RULE-BASED ANALYZER (Dynamic fallback)
     return run_general_analysis(code, language, mode)
+
+def _is_demo_match(user_code: str, demo: str) -> bool:
+    """Check if user code is substantially the same as a demo snippet."""
+    def normalize(s):
+        s = re.sub(r'#.*', '', s)
+        s = re.sub(r'\s+', '', s)
+        return s
+    return normalize(user_code) == normalize(demo)
 
 def get_calculate_average_analysis(mode: str) -> dict:
     # Error items
@@ -36,38 +39,39 @@ def get_calculate_average_analysis(mode: str) -> dict:
         }
     ]
     
-    # Suggestions
     suggestions = [
         {
             "line": 3,
             "title": "Guard Clause",
-            "message": "Use a guard clause at the start of the function to return 0 or None if the list is empty. This prevents deep nesting and handles empty inputs cleanly."
+            "message": "Add a check at the start: if the list is empty, return 0 right away. This is like checking if the fridge is empty before trying to cook!"
         },
         {
             "line": 1,
-            "title": "Type Hinting",
-            "message": "Add type hints like `numbers: list[float]` to make the expected argument clear to anyone reading the code."
+            "title": "Type Hints",
+            "message": "Add type hints like `numbers: list[float]` so others know what kind of data your function expects."
         }
     ]
 
-    # Explanation based on level
     if mode.lower() == "beginner":
         explanation = (
-            "### How it works step-by-step:\n\n"
-            "1. **`total = sum(numbers)`**:\n"
-            "   This line calculates the sum of all elements inside the list `numbers`. For example, if `numbers` is `[2, 4, 6]`, then `sum(numbers)` returns `12`.\n\n"
-            "2. **`return total / len(numbers)`**:\n"
-            "   Here, the code tries to divide the total sum by the length (count of numbers) of the list to get the average. For `[2, 4, 6]`, the length is `3`. So `12 / 3` is `4.0`.\n\n"
-            "### Why it failed:\n"
-            "- **The Zero Division Trap**: If a user runs your function with an empty list `[]`, the computer calculates `len([])` which is `0`. The code then tries to do `total / 0`. Since dividing any number by zero is mathematically impossible, Python panics and crashes with a **`ZeroDivisionError`**!\n"
-            "- **Type assumptions**: If the list contains strings like `['apple', 'banana']`, `sum()` will crash with a **`TypeError`** because you cannot add strings and numbers."
+            "### How this code works 🧪\n\n"
+            "1. **`total = sum(numbers)`** — adds up all numbers in the list\n"
+            "   Example: `[2, 4, 6]` → `2+4+6 = 12`\n\n"
+            "2. **`return total / len(numbers)`** — divides by the count to get the average\n"
+            "   Example: `12 / 3 = 4.0`\n\n"
+            "### What went wrong 🚨\n\n"
+            "- **Empty list problem**: If the list has nothing in it (`[]`), `len([])` is `0`. "
+            "Dividing by zero is like sharing pizza with 0 people — impossible! Python crashes with `ZeroDivisionError`.\n"
+            "- **Wrong data type**: If the list has words like `['apple', 'banana']`, `sum()` can't add words to numbers — crashes with `TypeError`.\n\n"
+            "### How to fix 🔧\n"
+            "Before calculating, check if the list is empty and handle it separately."
         )
-    else:  # Intermediate
+    else:
         explanation = (
             "### Technical Breakdown:\n\n"
-            "- **Edge Case Vulnerability**: The function assumes `len(numbers) > 0` as a precondition, which is highly dangerous. Standard production code should always be robust against empty arrays/iterables by handling them explicitly.\n"
-            "- **Complexity Analysis**: Calculating the average involves an initial linear traversal `O(N)` to calculate the sum, followed by `O(1)` length query. Space complexity is `O(1)` since it operates in-place.\n"
-            "- **Dynamic Type Hazard**: Because Python is dynamically typed, the list can contain non-numeric data types (strings, nested arrays), raising a runtime `TypeError` when evaluating the accumulator in CPython's internal `sum` C implementation."
+            "- **Edge Case**: Empty list → `len(numbers) == 0` causes `ZeroDivisionError`\n"
+            "- **Type Safety**: `sum()` requires numeric types; strings will raise `TypeError`\n"
+            "- **Fix**: Add an early return guard clause for empty input"
         )
 
     # Fixed code
@@ -93,20 +97,23 @@ def get_loop_price_analysis(mode: str) -> dict:
         {
             "line": 3,
             "type": "NameError",
-            "message": "Using singular 'price' inside the loop instead of indexed item or defining price first. Also, 'p' is undefined on line 4."
+            "message": "Line 4: You used `price` (singular) but it doesn't exist yet. You probably meant `prices[i]` (the current item from the list). Also `p` on line 5 isn't defined anywhere — it's like using a word you haven't taught the computer!"
         }
     ]
     suggestions = [
         {
             "line": 1,
             "title": "Use Direct Iteration",
-            "message": "Instead of iterating through indices using range(len(prices)), iterate over the list elements directly: `for price in prices:`."
+            "message": "Instead of `for i in range(len(prices))`, just write `for price in prices:` — simpler, cleaner, and no index confusion!"
         }
     ]
     explanation = (
-        "### Spotting the Singular/Plural Mix-up:\n"
-        "You iterated through the index variable `i` (using `range(len(prices))`). Inside the loop, you wrote `price` instead of `prices[i]`, and then added `p` which doesn't exist. "
-        "This is a very common beginner mistake! Make sure to keep variable names distinct and consistent."
+        "### What went wrong 🧐\n\n"
+        "You're mixing up names! You have a list called `prices` (plural), but inside the loop you wrote `price` (singular) and `p` — which don't exist.\n\n"
+        "Think of it like this: you have a box of toys (`prices`), and you're trying to pick one up. "
+        "Instead of saying \"pass me the toy\" (what you actually want), you're saying \"pass me the box\" or \"pass me something I didn't name.\"\n\n"
+        "### Simple fix ✅\n"
+        "Use `for price in prices:` and then use `price` inside the loop. Python hands you each item automatically!"
     )
     fixed_code = (
         "def calculate_total(prices):\n"
@@ -124,212 +131,329 @@ def get_loop_price_analysis(mode: str) -> dict:
     }
 
 def run_general_analysis(code: str, language: str, mode: str) -> dict:
-    """
-    Dynamic analysis using heuristics for common student issues
-    """
     errors = []
     suggestions = []
-    
+
     lines = code.split("\n")
-    
-    # 1. Look for obvious division by variable in any language
+    lang = language.lower()
+
+    # ------------------------------------------------
+    # SYNTAX & STRUCTURAL CHECKS (language-agnostic)
+    # ------------------------------------------------
     for idx, line in enumerate(lines):
         line_num = idx + 1
-        
-        # Division by variable, len, count, etc.
-        div_match = re.search(r'/\s*([a-zA-Z_][a-zA-Z0-9_]*|\blen\b|\bcount\b)\b', line)
-        if div_match and not any(kw in line for kw in ["if", "check", "!=", ">"]):
-            var_name = div_match.group(1)
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        # ------ Indentation: tabs vs spaces ------
+        if '\t' in line and line.startswith('\t'):
+            if any(l.startswith(' ') for l in lines if l.strip()):
+                suggestions.append({
+                    "line": line_num,
+                    "title": "Mixed Indentation",
+                    "message": f"Line {line_num} uses tabs, but other lines use spaces. Pick ONE (spaces recommended) and stick with it!"
+                })
+
+        # ------ Unclosed string quotes ------
+        for q in ['"', "'", '"""', "'''"]:
+            count = stripped.count(q)
+            if count > 0 and count % 2 != 0:
+                errors.append({
+                    "line": line_num,
+                    "type": "SyntaxError",
+                    "message": f"Line {line_num}: Unclosed string! You started a string with {q} but never ended it. Every opening quote needs a matching closing quote."
+                })
+                break
+
+        # ------ Mismatched brackets ------
+        for pair in [('(', ')'), ('[', ']'), ('{', '}')]:
+            opens = stripped.count(pair[0])
+            closes = stripped.count(pair[1])
+            if opens != closes:
+                errors.append({
+                    "line": line_num,
+                    "type": "SyntaxError",
+                    "message": f"Line {line_num}: You have {opens} opening `{pair[0]}` but {closes} closing `{pair[1]}`. Every opening bracket needs a matching closing one."
+                })
+                break
+
+    # ------------------------------------------------
+    # PYTHON-SPECIFIC CHECKS
+    # ------------------------------------------------
+    if lang == "python":
+        # ------ Try to parse with AST to catch real syntax errors ------
+        try:
+            ast.parse(code)
+        except SyntaxError as e:
+            err_line = e.lineno or 1
             errors.append({
-                "line": line_num,
-                "type": "ZeroDivisionError" if language.lower() == "python" else "DivisionByZeroWarning",
-                "message": f"Potential division by zero at line {line_num}. Ensure the variable '{var_name}' is validated to be non-zero before dividing."
+                "line": err_line,
+                "type": "SyntaxError",
+                "message": f"Line {err_line}: Python found a syntax error here — {e.msg}. This is like a typo in a sentence that makes it impossible to read."
             })
-            
-        # Unused variable check (python specific mockup)
-        if language.lower() == "python":
-            match = re.match(r'^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*', line)
-            if match:
-                var_defined = match.group(1)
-                # Check if it is used in subsequent lines
+
+        # ------ Missing colon after keywords ------
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            kw_match = re.match(r'^(if|elif|else|for|while|def|class|try|except|finally|with)\b', stripped)
+            if kw_match:
+                kw = kw_match.group(1)
+                if kw in ('elif', 'else') and stripped.endswith(':'):
+                    continue
+                if kw in ('if', 'elif', 'for', 'while', 'def', 'class', 'try', 'except', 'finally', 'with'):
+                    if not stripped.endswith(':'):
+                        errors.append({
+                            "line": line_num,
+                            "type": "SyntaxError",
+                            "message": f"Line {line_num}: Missing colon (`:`) at the end of your `{kw}` statement. In Python, every {kw} line must end with a colon — like a pause before the instructions that follow."
+                        })
+
+        # ------ Undefined variable detection (simple) ------
+        defined_vars = {}
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            assign = re.match(r'^\s*([a-zA-Z_]\w*)\s*=', line)
+            if assign:
+                var_name = assign.group(1)
+                if not var_name.startswith('_'):
+                    defined_vars[var_name] = line_num
+
+        # Check if any for-loop variable is used before definition
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            for_match = re.match(r'for\s+(\w+)\s+in\s+(\w+)', stripped)
+            if for_match:
+                iter_var = for_match.group(2)
+                if iter_var not in defined_vars and iter_var not in ('range', 'len', 'list', 'dict', 'set', 'str', 'int', 'float', 'print'):
+                    suggestions.append({
+                        "line": line_num,
+                        "title": "Undefined Iterable",
+                        "message": f"Line {line_num}: You're looping over `{iter_var}` but it's not defined before this line. It's like saying 'for each toy in (box of toys)' when you haven't shown the box!"
+                    })
+
+        # ------ Unused variable ------
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            assign = re.match(r'^\s*([a-zA-Z_]\w*)\s*=\s*', line)
+            if assign:
+                var_defined = assign.group(1)
+                if var_defined.startswith('_'):
+                    continue
                 used = False
                 for rest_line in lines[line_num:]:
                     if var_defined in rest_line:
                         used = True
                         break
-                if not used and not var_defined.startswith("_"):
+                if not used:
                     suggestions.append({
                         "line": line_num,
                         "title": "Unused Variable",
-                        "message": f"The variable '{var_defined}' is defined but never used. Consider removing it to keep the code tidy."
+                        "message": f"You created `{var_defined}` on line {line_num} but never used it. It's like buying ingredients and leaving them in the fridge! Either use it or remove the line."
                     })
-                    
-        # Missing semicolons or bad syntax suggestions in JS/TS/C/C#/Dart
-        if language.lower() in ["javascript", "typescript", "c", "c#", "dart"]:
-            stmt_keywords = ["const ", "let ", "var ", "int ", "float ", "double ", "char ", "String ", "bool "]
-            if any(kw in line for kw in stmt_keywords):
-                if not line.strip().endswith(";") and not line.strip().endswith("{") and not line.strip().endswith("}"):
-                    semi_warn = "JavaScript allows omitting semicolons, but keeping them avoids unexpected parser issues." if language.lower() in ["javascript", "typescript"] else f"Missing semicolon at line {line_num}. {language} requires explicit statement termination with ';'."
+
+        # ------ Division by zero check ------
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            div_match = re.search(r'/\s*([a-zA-Z_]\w*)', line)
+            if div_match and not any(kw in line for kw in ["if", "check", "!=", ">"]):
+                var_name = div_match.group(1)
+                if var_name not in ('len', 'sum', 'min', 'max'):
+                    errors.append({
+                        "line": line_num,
+                        "type": "ZeroDivisionError",
+                        "message": f"Line {line_num}: You're dividing by `{var_name}` without checking if it's zero first. Imagine sharing 10 cookies with 0 friends — it doesn't work! Always check: `if {var_name} != 0:` before dividing."
+                    })
+
+        # ------ Infinite loop detection ------
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            if re.match(r'^\s*while\s+(True|1)\s*:', line):
+                if not any('break' in l for l in lines):
+                    errors.append({
+                        "line": line_num,
+                        "type": "InfiniteLoopError",
+                        "message": f"Line {line_num}: This loop never stops! It's like a song stuck on repeat with no stop button. Add a `break` statement or a condition that becomes False."
+                    })
+
+    # ------------------------------------------------
+    # JAVASCRIPT / TYPESCRIPT CHECKS
+    # ------------------------------------------------
+    if lang in ("javascript", "typescript"):
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            stmt_keywords = ["const ", "let ", "var ", "function ", "if ", "for ", "while "]
+            if any(stripped.startswith(kw) for kw in stmt_keywords):
+                if not stripped.endswith(";") and not stripped.endswith("{") and not stripped.endswith("}") and not stripped.endswith("("):
                     suggestions.append({
                         "line": line_num,
                         "title": "Missing Semicolon",
-                        "message": semi_warn
+                        "message": f"Line {line_num}: You forgot a `;` at the end. JavaScript can sometimes guess where sentences end, but adding `;` makes it crystal clear!"
                     })
-                    
-        # C-specific: uninitialized variable patterns
-        if language.lower() == "c":
-            uninit = re.match(r'^\s*(int|char|float|double)\s+\w+;\s*$', line)
-            if uninit:
-                suggestions.append({
-                    "line": line_num,
-                    "title": "Uninitialized Variable",
-                    "message": f"Variable declared at line {line_num} without initialization. In C, uninitialized variables contain garbage values and lead to undefined behavior."
-                })
 
-        # SQL-specific: dangerous patterns
-        if language.lower() == "sql":
-            if re.search(r'\bupdate\b.*\bset\b', line, re.I) and not re.search(r'\bwhere\b', line, re.I):
+    # ------------------------------------------------
+    # C / C++ / C# / DART CHECKS
+    # ------------------------------------------------
+    if lang in ("c", "c++", "c#", "dart"):
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            type_kws = ["int ", "float ", "double ", "char ", "String ", "bool ", "void "]
+            if any(stripped.startswith(kw) for kw in type_kws):
+                if not stripped.endswith(";") and not stripped.endswith("{") and not stripped.endswith("}") and not stripped.endswith("("):
+                    suggestions.append({
+                        "line": line_num,
+                        "title": "Missing Semicolon",
+                        "message": f"Line {line_num}: Missing `;`. In {language}, every statement must end with a semicolon — like a period at the end of a sentence."
+                    })
+
+        if lang == "c":
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                uninit = re.match(r'^\s*(int|char|float|double)\s+\w+\s*;\s*$', line)
+                if uninit:
+                    suggestions.append({
+                        "line": line_num,
+                        "title": "Uninitialized Variable",
+                        "message": f"Line {line_num}: Variable declared without a value. In C, uninitialized variables contain garbage data — like an empty box with random stuff inside. Always set a starting value!"
+                    })
+
+    # ------------------------------------------------
+    # SQL CHECKS
+    # ------------------------------------------------
+    if lang == "sql":
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            if re.search(r'\bupdate\b.*\bset\b', stripped, re.I) and not re.search(r'\bwhere\b', stripped, re.I):
                 errors.append({
                     "line": line_num,
                     "type": "MissingWHERE",
-                    "message": f"Line {line_num}: UPDATE without a WHERE clause will modify ALL rows in the table. Always add a WHERE condition to target specific records."
+                    "message": f"Line {line_num}: UPDATE without a WHERE clause will change ALL rows! Always add `WHERE` to target specific records."
                 })
-            if re.search(r'\bdelete\b', line, re.I) and not re.search(r'\bwhere\b', line, re.I):
+            if re.search(r'\bdelete\b', stripped, re.I) and not re.search(r'\bwhere\b', stripped, re.I):
                 errors.append({
                     "line": line_num,
                     "type": "MissingWHERE",
-                    "message": f"Line {line_num}: DELETE without a WHERE clause will remove ALL rows from the table. Always specify which rows to delete."
-                })
-            if re.search(r"drop\s+table", line, re.I):
-                suggestions.append({
-                    "line": line_num,
-                    "title": "Irreversible Operation",
-                    "message": "DROP TABLE permanently deletes the table and its data. Consider using a backup or transaction before running this."
+                    "message": f"Line {line_num}: DELETE without a WHERE clause will remove ALL rows! Always specify which rows to delete."
                 })
 
-        # HTML-specific: common beginner mistakes
-        if language.lower() == "html":
-            if re.search(r'<(img|br|hr|input|meta|link)>$', line):
+    # ------------------------------------------------
+    # HTML CHECKS
+    # ------------------------------------------------
+    if lang == "html":
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            if re.search(r'<(img|br|hr|input|meta|link)>$', stripped):
                 suggestions.append({
                     "line": line_num,
                     "title": "Self-Closing Tag",
-                    "message": f"Line {line_num}: In HTML5, void elements like `<{line.strip().strip('<>')}>` don't need a closing slash, but adding `/>` is valid. Be consistent."
+                    "message": f"Line {line_num}: `<{stripped.strip('<>')}>` doesn't need a closing tag — it's a void element. But keep it consistent!"
                 })
-            if re.search(r'<(div|p|span|h[1-6]|a|li|ul|ol|table|section|header|footer)>$', line) and '/' not in line:
-                if not any(f'</{tag}' in line or f'</{line.strip()[1:].split()[0].strip(">")}' in l for l in lines[line_num:] for tag in ['div','p','span']):
-                    open_tag = re.search(r'<(\w+)', line)
-                    if open_tag:
-                        tag_name = open_tag.group(1)
-                        suggestions.append({
-                            "line": line_num,
-                            "title": "Missing Closing Tag",
-                            "message": f"Line {line_num}: The `<{tag_name}>` tag was opened but may not be properly closed. Ensure you have a corresponding `</{tag_name}>` later."
-                        })
 
-        # CSS-specific: common beginner mistakes
-        if language.lower() == "css":
-            if re.search(r':\s*\d+\s*$', line) and not re.search(r'(px|em|rem|%|vh|vw|pt|cm|mm|in|ch|ex|vmin|vmax|s|ms)', line):
+    # ------------------------------------------------
+    # CSS CHECKS
+    # ------------------------------------------------
+    if lang == "css":
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            if re.search(r':\s*\d+\s*$', stripped) and not re.search(r'(px|em|rem|%|vh|vw|pt|cm|mm)', stripped):
                 suggestions.append({
                     "line": line_num,
                     "title": "Missing CSS Unit",
-                    "message": f"Line {line_num}: Numeric value without a unit. CSS requires units like `px`, `em`, `rem`, or `%` for most length values (e.g., `16px` instead of `16`)."
+                    "message": f"Line {line_num}: Number without a unit. CSS needs `px`, `em`, `rem`, or `%` after numbers (e.g., `16px` not just `16`)."
                 })
-            if re.search(r'color\s*:\s*\d+', line, re.I):
+            if re.search(r'color\s*:\s*\d+', stripped, re.I):
                 errors.append({
                     "line": line_num,
                     "type": "InvalidColorValue",
-                    "message": f"Line {line_num}: Plain numbers are not valid CSS color values. Use named colors, hex (`#ff0000`), rgb(`rgb(255,0,0)`), or hsl values."
-                })
-            if re.search(r'[a-zA-Z]+\s*{[^}]*}', line) and not re.search(r'[a-zA-Z]+\s*:\s*[^;]+;', line):
-                suggestions.append({
-                    "line": line_num,
-                    "title": "Empty or Invalid Rule",
-                    "message": f"Line {line_num}: This CSS rule appears to have no valid property declarations. Make sure every rule has at least one `property: value;` pair."
+                    "message": f"Line {line_num}: Plain numbers aren't valid colors. Use hex (`#ff0000`), rgb(`rgb(255,0,0)`), or named colors."
                 })
 
-        # Dart-specific: null safety checks
-        if language.lower() == "dart":
-            nullable = re.match(r'^\s*(String|int|double|bool)\s+\w+\s*=\s*null\s*;', line)
-            if nullable:
-                errors.append({
-                    "line": line_num,
-                    "type": "NullSafetyError",
-                    "message": f"Line {line_num}: Assigning null to a non-nullable type. In Dart, use `?` syntax (e.g. `String?`) for nullable variables."
-                })
-
-        # Look for infinity loop while(true)
-        if "while(true)" in line.replace(" ", "") or "while True" in line:
-            if not any("break" in l for l in lines):
-                errors.append({
-                    "line": line_num,
-                    "type": "InfiniteLoopError",
-                    "message": f"Infinite loop detected at line {line_num}! There is no break condition inside the loop, which will lock the CPU and crash the program."
-                })
-
-    # Default fallback content if no errors detected
+    # ------------------------------------------------
+    # FALLBACK SUGGESTION
+    # ------------------------------------------------
     if not errors:
-        # Give a generic warning or suggestion to ensure they have some dashboard items
         suggestions.append({
             "line": 1,
-            "title": "Add Docstring / Comments",
-            "message": "Add comments explaining what this code block accomplishes. This is a critical habit for learning developers."
+            "title": "Add Comments",
+            "message": "Comments (`#` in Python, `//` in JS/C++) are like sticky notes for your code. They help you remember what each part does when you come back later!"
         })
 
-    # Prepare standard natural language explanation
-    explanation = f"### Overall Assessment:\n"
-    explanation += f"This {language.capitalize()} code block was analyzed in **{mode} Mode**.\n\n"
-    if errors:
-        explanation += "We detected **critical issues** that could cause crashes or unintended runtime behaviors. Please review the highlighted red boxes in the 'Errors' tab.\n\n"
-    else:
-        explanation += "The code structures seem mostly sound. No major runtime crashes were immediately found, though there are suggestions to improve maintainability and readability.\n\n"
-        
-    explanation += "### How the code flows:\n"
-    for idx, line in enumerate(lines[:5]):
-        if line.strip():
-            explanation += f"- **Line {idx+1}**: Performs operations containing `{line.strip()[:40]}`.\n"
-    if len(lines) > 5:
-        explanation += f"- ... and {len(lines)-5} additional lines.\n"
+    # ------------------------------------------------
+    # EXPLANATION GENERATION
+    # ------------------------------------------------
+    if mode.lower() == "beginner":
+        if errors:
+            explanation = (
+                "### What went wrong 🛑\n\n"
+                "Your code has some bugs we need to fix. Think of your code like a recipe — "
+                "if a step is missing or wrong, the dish won't come out right!\n\n"
+            )
+            for err in errors:
+                explanation += f"- **Line {err['line']}**: {err['message']}\n"
+        else:
+            explanation = (
+                "### Looking good! ✅\n\n"
+                "Your code runs without any major crashes. But even a working recipe can be improved — "
+                "check the Suggestions tab for tips to make it cleaner and easier to read.\n\n"
+            )
 
-    # Fixed code generation (returns code with inline checks)
+        explanation += "\n### What each line does\n"
+        for idx, line in enumerate(lines[:6]):
+            if line.strip():
+                explanation += f"- **Line {idx+1}**: `{line.strip()[:50]}`\n"
+        if len(lines) > 6:
+            explanation += f"- ... and {len(lines)-6} more lines after that.\n"
+
+        if lang == "python":
+            explanation += (
+                "\n### Quick tip 🌟\n"
+                "Python reads your code from top to bottom, one line at a time — "
+                "just like reading a book! Make sure each step makes sense before moving to the next."
+            )
+    else:
+        if errors:
+            explanation = f"### Issues Detected\n\n{len(errors)} error(s) found.\n\n"
+            for err in errors:
+                explanation += f"- **L{err['line']}** — {err['type']}: {err['message']}\n"
+        else:
+            explanation = "### Assessment\n\nNo critical issues detected.\n"
+
+        explanation += "\n### Code Flow\n"
+        for idx, line in enumerate(lines[:5]):
+            if line.strip():
+                explanation += f"- **L{idx+1}**: `{line.strip()[:50]}`\n"
+        if len(lines) > 5:
+            explanation += f"- ... and {len(lines)-5} more lines.\n"
+
+    # ------------------------------------------------
+    # FIXED CODE GENERATION
+    # ------------------------------------------------
     fixed_lines = []
-    added_guards = False
     for idx, line in enumerate(lines):
-        # If there was a division error on this line, insert a guard before it
-        has_div = False
-        for err in errors:
-            if err["line"] == idx + 1 and "ZeroDivisionError" in err["type"]:
-                has_div = True
-                break
-        
+        has_div = any(err["line"] == idx + 1 and "Division" in err["type"] for err in errors)
         if has_div:
             indent = " " * (len(line) - len(line.lstrip()))
-            lang_lower = language.lower()
-            if lang_lower == "python":
+            if lang == "python":
                 fixed_lines.append(f"{indent}# Ensure we don't divide by zero")
-                fixed_lines.append(f"{indent}if len(numbers) == 0: return 0")
-            elif lang_lower in ["javascript", "typescript"]:
-                fixed_lines.append(f"{indent}// Ensure we don't divide by zero")
-                fixed_lines.append(f"{indent}if (numbers.length === 0) return 0;")
-            elif lang_lower in ["c", "c++", "c#", "dart"]:
-                comment = "//" if lang_lower != "c#" else "//"
-                fixed_lines.append(f"{indent}{comment} Ensure we don't divide by zero")
-                fixed_lines.append(f"{indent}if (count == 0) return 0;")
-            elif lang_lower == "go":
-                fixed_lines.append(f"{indent}// Ensure we don't divide by zero")
-                fixed_lines.append(f"{indent}if len(numbers) == 0 {{ return 0 }}")
-            elif lang_lower == "rust":
-                fixed_lines.append(f"{indent}// Ensure we don't divide by zero")
-                fixed_lines.append(f"{indent}if numbers.is_empty() {{ return 0; }}")
-            elif lang_lower in ["java", "kotlin"]:
-                fixed_lines.append(f"{indent}// Ensure we don't divide by zero")
-                fixed_lines.append(f"{indent}if (numbers.length == 0) return 0;")
-            else:
-                fixed_lines.append(f"{indent}// Ensure we don't divide by zero")
-                fixed_lines.append(f"{indent}if (condition) return 0;")
-            added_guards = True
-            
+                fixed_lines.append(f"{indent}if variable != 0:")
+                fixed_lines.append(f"{indent}    {line.lstrip()}")
+                continue
+            elif lang in ("javascript", "typescript"):
+                fixed_lines.append(f"{indent}// Guard against zero division")
+                fixed_lines.append(f"{indent}if (variable !== 0) {{")
+                fixed_lines.append(f"{indent}  {line.lstrip()}")
+                fixed_lines.append(f"{indent}}}")
+                continue
         fixed_lines.append(line)
-        
+
     fixed_code = "\n".join(fixed_lines)
 
     return {
