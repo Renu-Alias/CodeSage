@@ -1,7 +1,12 @@
 import json
+import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib.parse
+from dotenv import load_dotenv
 from app.analyzer import analyze_code
+from app.gemini_service import analyze_with_gemini
+
+load_dotenv()
 
 # In-memory storage for submission logs so the user's dashboard updates dynamically!
 SUBMISSION_HISTORY = [
@@ -229,8 +234,8 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"detail": "Code cannot be empty"}).encode('utf-8'))
                     return
                 
-                # Run analyzer
-                result = analyze_code(code, language, mode)
+                # Run analyzer (try Gemini AI first, fall back to local heuristics)
+                result = analyze_with_gemini(code, language, mode) or analyze_code(code, language, mode)
                 
                 # Append to dynamic history
                 new_sub_id = str(len(SUBMISSION_HISTORY) + 1)
@@ -303,7 +308,9 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"detail": "Not Found"}).encode('utf-8'))
 
-def run_server(port=8000):
+def run_server(port=None):
+    if port is None:
+        port = int(os.getenv("BACKEND_PORT", 8000))
     server_address = ('', port)
     httpd = HTTPServer(server_address, CodeSageHTTPHandler)
     print(f"CodeSage Native Python Server running on port {port}...")

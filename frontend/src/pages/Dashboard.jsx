@@ -87,7 +87,7 @@ export default function Dashboard({ setCurrentPage, setSampleCode }) {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/dashboard");
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard`);
         if (res.ok) {
           const data = await res.json();
           setMetrics(data.metrics);
