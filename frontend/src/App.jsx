@@ -5,15 +5,13 @@ import Home from './pages/Home';
 import Analyze from './pages/Analyze';
 import Dashboard from './pages/Dashboard';
 import Learn from './pages/Learn';
-import Login from './pages/Login';
-import SignUp from './pages/SignUp';
-import OnboardingLearning from './pages/OnboardingLearning';
-import OnboardingLevel from './pages/OnboardingLevel';
+import Payment from './pages/Payment';
 import './App.css';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [sampleCode, setSampleCode] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState(null);
   
   // Authentication & Onboarding states
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -26,47 +24,17 @@ function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <Home setCurrentPage={setCurrentPage} setSampleCode={setSampleCode} />;
+        return <Home setCurrentPage={setCurrentPage} setSampleCode={setSampleCode} setSelectedPlan={setSelectedPlan} />;
       case 'analyze':
         return <Analyze sampleCode={sampleCode} setSampleCode={setSampleCode} />;
       case 'dashboard':
         return <Dashboard setCurrentPage={setCurrentPage} setSampleCode={setSampleCode} />;
       case 'learn':
         return <Learn setCurrentPage={setCurrentPage} />;
-      case 'login':
-        return (
-          <Login 
-            setCurrentPage={setCurrentPage} 
-            setIsLoggedIn={setIsLoggedIn} 
-            setUser={setUser} 
-          />
-        );
-      case 'signup':
-        return (
-          <SignUp 
-            setCurrentPage={setCurrentPage} 
-            setUser={setUser} 
-          />
-        );
-      case 'onboarding-learning':
-        return (
-          <OnboardingLearning 
-            setCurrentPage={setCurrentPage} 
-            setOnboardingData={setOnboardingData} 
-            onboardingData={onboardingData} 
-          />
-        );
-      case 'onboarding-level':
-        return (
-          <OnboardingLevel 
-            setCurrentPage={setCurrentPage} 
-            setIsLoggedIn={setIsLoggedIn} 
-            setOnboardingData={setOnboardingData} 
-            onboardingData={onboardingData} 
-          />
-        );
+      case 'payment':
+        return <Payment selectedPlan={selectedPlan} setCurrentPage={setCurrentPage} />;
       default:
-        return <Home setCurrentPage={setCurrentPage} setSampleCode={setSampleCode} />;
+        return <Home setCurrentPage={setCurrentPage} setSampleCode={setSampleCode} setSelectedPlan={setSelectedPlan} />;
     }
   };
 

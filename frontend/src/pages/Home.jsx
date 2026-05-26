@@ -2,7 +2,7 @@ import React from 'react';
 import { ArrowRight, Code2, AlertTriangle, Lightbulb, Compass, Award, Star } from 'lucide-react';
 import { LANGUAGES } from '../constants/languages';
 
-export default function Home({ setCurrentPage, setSampleCode }) {
+export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan }) {
   const handleStartAnalysis = (codeType) => {
     if (codeType === 'demo') {
       setSampleCode({
@@ -269,7 +269,7 @@ export default function Home({ setCurrentPage, setSampleCode }) {
                 <li>✓ Basic explanations</li>
               </ul>
               
-              <button className="btn btn-secondary pricing-btn" onClick={() => setCurrentPage('analyze')}>
+              <button className="btn btn-secondary pricing-btn" onClick={() => { setSelectedPlan('free'); setCurrentPage('payment'); }}>
                 Get started
               </button>
             </div>
@@ -293,7 +293,7 @@ export default function Home({ setCurrentPage, setSampleCode }) {
                 <li>✓ Priority AI processing</li>
               </ul>
               
-              <button className="btn btn-primary pricing-btn" onClick={() => setCurrentPage('analyze')}>
+              <button className="btn btn-primary pricing-btn" onClick={() => { setSelectedPlan('pro'); setCurrentPage('payment'); }}>
                 Start Pro trial
               </button>
             </div>
@@ -316,7 +316,7 @@ export default function Home({ setCurrentPage, setSampleCode }) {
                 <li>✓ LMS integration</li>
               </ul>
               
-              <button className="btn btn-secondary pricing-btn" onClick={() => setCurrentPage('analyze')}>
+              <button className="btn btn-secondary pricing-btn" onClick={() => { setSelectedPlan('classroom'); setCurrentPage('payment'); }}>
                 Contact sales
               </button>
             </div>
