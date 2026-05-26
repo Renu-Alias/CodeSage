@@ -144,6 +144,63 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"detail": "Submission not found"}).encode('utf-8'))
                 
+        elif path == "/api/pricing":
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            
+            pricing_data = {
+                "plans": [
+                    {
+                        "id": "free",
+                        "name": "Free",
+                        "descriptor": "Perfect for getting started",
+                        "priceMonthly": 0,
+                        "priceYearly": 0,
+                        "features": ["10 analyses", "3 languages", "Basic detection", "30-day history"],
+                        "cta": "Get started"
+                    },
+                    {
+                        "id": "pro",
+                        "name": "Pro",
+                        "descriptor": "For serious learners",
+                        "priceMonthly": 299,
+                        "priceYearly": 239,
+                        "features": ["Unlimited analyses", "All languages", "Weakness report", "Full history", "Priority AI", "Beginner/Intermediate modes"],
+                        "cta": "Upgrade to Pro",
+                        "popular": True
+                    },
+                    {
+                        "id": "classroom",
+                        "name": "Classroom",
+                        "descriptor": "For teachers and institutions",
+                        "priceMonthly": 999,
+                        "priceYearly": 799,
+                        "features": ["30 students included", "Teacher dashboard", "Class-wide reports", "Assignment mode", "Everything in Pro"],
+                        "cta": "Contact us"
+                    }
+                ],
+                "faqs": [
+                    {
+                        "question": "Can I switch plans anytime?",
+                        "answer": "Yes, you can upgrade, downgrade, or cancel your subscription at any time. When you change plans, your access will be adjusted immediately and billing will be prorated."
+                    },
+                    {
+                        "question": "Is there a student discount?",
+                        "answer": "CodeSage is built for students! Our Pro plan is already heavily discounted by 70% compared to standard developer tools. If you need institutional support, contact your university for Classroom billing."
+                    },
+                    {
+                        "question": "What languages are supported?",
+                        "answer": "We support Python, JavaScript, Java, C++, TypeScript, Go, Rust, and many other programming languages. Auto-detection is built into our analyzer."
+                    },
+                    {
+                        "question": "How does the weakness report work?",
+                        "answer": "Every time you analyze code, we categorize the errors. Over time, the weakness engine generates reports showing patterns like confusion in loop conditions or unhandled boundary cases, complete with targeted exercises."
+                    }
+                ]
+            }
+            self.wfile.write(json.dumps(pricing_data).encode('utf-8'))
+            
         else:
             self.send_response(404)
             self.send_header('Content-Type', 'application/json')
