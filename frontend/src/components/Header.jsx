@@ -19,10 +19,6 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
         const el = document.getElementById('pricing-section');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       }, 100);
-    } else if (targetId === 'dashboard' && !isLoggedIn) {
-      // Direct logged out users to login page
-      setCurrentPage('login');
-      window.scrollTo(0, 0);
     } else {
       setCurrentPage(targetId);
       window.scrollTo(0, 0);

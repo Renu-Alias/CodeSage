@@ -2,13 +2,187 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Play, Copy, Check, Terminal, AlertCircle, Sparkles, FileText, ChevronRight } from 'lucide-react';
 import { LANGUAGES, extToLanguage, acceptExtensions } from '../constants/languages';
 
+const DEFAULT_SNIPPETS = {
+  Python: `def calculate_average(numbers):
+    total = sum(numbers)
+    # Bug: division without zero check
+    return total / len(numbers)`,
+  JavaScript: `function calculateAverage(numbers) {
+  let total = 0;
+  for (let i = 0; i <= numbers.length; i++) {
+    total += numbers[i];
+  }
+  return total / numbers.length;
+}`,
+  TypeScript: `function calculateAverage(numbers: number[]): number {
+  let total = 0;
+  for (let i = 0; i <= numbers.length; i++) {
+    total += numbers[i];
+  }
+  return total / numbers.length;
+}`,
+  'C++': `#include <iostream>
+using namespace std;
+
+int main() {
+  int numbers[5] = {1, 2, 3, 4, 5};
+  int total = 0;
+  for (int i = 0; i <= 5; i++) {
+    total += numbers[i];
+  }
+  cout << total / 5;
+  return 0;
+}`,
+  Java: `public class Main {
+  public static void main(String[] args) {
+    int[] numbers = {1, 2, 3, 4, 5};
+    int total = 0;
+    for (int i = 0; i <= numbers.length; i++) {
+      total += numbers[i];
+    }
+    System.out.println(total / numbers.length);
+  }
+}`,
+  Go: `package main
+
+import "fmt"
+
+func main() {
+  numbers := []int{1, 2, 3, 4, 5}
+  total := 0
+  for i := 0; i <= len(numbers); i++ {
+    total += numbers[i]
+  }
+  fmt.Println(total / len(numbers))
+}`,
+  Rust: `fn main() {
+  let numbers = vec![1, 2, 3, 4, 5];
+  let mut total = 0;
+  for i in 0..=numbers.len() {
+    total += numbers[i];
+  }
+  println!("{}", total / numbers.len());
+}`,
+  C: `#include <stdio.h>
+
+int main() {
+  int numbers[] = {1, 2, 3, 4, 5};
+  int total = 0;
+  for (int i = 0; i <= 5; i++) {
+    total += numbers[i];
+  }
+  printf("%d", total / 5);
+  return 0;
+}`,
+  Dart: `void main() {
+  List<int> numbers = [1, 2, 3, 4, 5];
+  int total = 0;
+  for (int i = 0; i <= numbers.length; i++) {
+    total += numbers[i];
+  }
+  print(total / numbers.length);
+}`,
+  Ruby: `def calculate_average(numbers)
+  total = numbers.sum
+  total / numbers.length
+end
+
+puts calculate_average([1, 2, 3, 4, 5])`,
+  PHP: `<?php
+function calculateAverage($numbers) {
+  $total = array_sum($numbers);
+  return $total / count($numbers);
+}
+
+echo calculateAverage([1, 2, 3, 4, 5]);
+?>`,
+  Swift: `func calculateAverage(numbers: [Int]) -> Int {
+  let total = numbers.reduce(0, +)
+  return total / numbers.count
+}
+
+print(calculateAverage(numbers: [1, 2, 3, 4, 5]))`,
+  Kotlin: `fun main() {
+  val numbers = listOf(1, 2, 3, 4, 5)
+  var total = 0
+  for (i in 0..numbers.size) {
+    total += numbers[i]
+  }
+  println(total / numbers.size)
+}`,
+  'C#': `using System;
+
+class Program {
+  static void Main() {
+    int[] numbers = {1, 2, 3, 4, 5};
+    int total = 0;
+    for (int i = 0; i <= numbers.Length; i++) {
+      total += numbers[i];
+    }
+    Console.WriteLine(total / numbers.Length);
+  }
+}`,
+  SQL: `SELECT AVG(price) AS average_price
+FROM products
+WHERE category_id = 1;`,
+  HTML: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Page</title>
+</head>
+<body>
+  <h1>Hello World</h1>
+  <img src="image.jpg" alt="photo">
+  <p>This is a paragraph</p>
+</body>
+</html>`,
+  CSS: `.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: lightblue;
+  padding: 20px;
+  margin: 0 auto;
+}`,
+};
+
+const DEFAULT_FILENAMES = {
+  Python: 'calculate_average.py',
+  JavaScript: 'calculate_average.js',
+  TypeScript: 'calculate_average.ts',
+  'C++': 'main.cpp',
+  Java: 'Main.java',
+  Go: 'main.go',
+  Rust: 'main.rs',
+  C: 'main.c',
+  Dart: 'main.dart',
+  Ruby: 'main.rb',
+  PHP: 'index.php',
+  Swift: 'main.swift',
+  Kotlin: 'main.kt',
+  'C#': 'Program.cs',
+  SQL: 'query.sql',
+  HTML: 'index.html',
+  CSS: 'styles.css',
+};
+
 export default function Analyze({ sampleCode, setSampleCode }) {
-  const [code, setCode] = useState(
-    sampleCode?.code || 
-    "def calculate_average(numbers):\n    total = sum(numbers)\n    # Bug: division without zero check\n    return total / len(numbers)"
-  );
+  const getInitialSnippet = () => {
+    if (sampleCode?.code) return sampleCode.code;
+    const lang = sampleCode?.language || 'Python';
+    return DEFAULT_SNIPPETS[lang] || DEFAULT_SNIPPETS.Python;
+  };
+
+  const getInitialFilename = () => {
+    if (sampleCode?.filename) return sampleCode.filename;
+    const lang = sampleCode?.language || 'Python';
+    return DEFAULT_FILENAMES[lang] || DEFAULT_FILENAMES.Python;
+  };
+
+  const [code, setCode] = useState(getInitialSnippet());
   const [language, setLanguage] = useState(sampleCode?.language || "Python");
-  const [filename, setFilename] = useState(sampleCode?.filename || "calculate_average.py");
+  const [filename, setFilename] = useState(getInitialFilename());
   const [mode, setMode] = useState("Beginner");
   
   const [loading, setLoading] = useState(false);
@@ -275,7 +449,16 @@ export default function Analyze({ sampleCode, setSampleCode }) {
               <select 
                 className="select-dropdown" 
                 value={language} 
-                onChange={(e) => setLanguage(e.target.value)}
+                onChange={(e) => {
+                  const newLang = e.target.value;
+                  setLanguage(newLang);
+                  setCode(DEFAULT_SNIPPETS[newLang] || DEFAULT_SNIPPETS.Python);
+                  setFilename(DEFAULT_FILENAMES[newLang] || DEFAULT_FILENAMES.Python);
+                  setErrors([]);
+                  setSuggestions([]);
+                  setExplanation(`### Ready to analyze\nPaste your ${newLang} code and click Analyze to get started.`);
+                  setFixedCode('');
+                }}
               >
                 {LANGUAGES.map(lang => (
                   <option key={lang.name} value={lang.name}>{lang.name}</option>

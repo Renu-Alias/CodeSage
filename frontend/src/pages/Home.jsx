@@ -317,7 +317,7 @@ export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan })
               </ul>
               
               <button className="btn btn-secondary pricing-btn" onClick={() => { setSelectedPlan('classroom'); setCurrentPage('payment'); }}>
-                Contact sales
+                Get started
               </button>
             </div>
           </div>
