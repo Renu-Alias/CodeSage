@@ -58,6 +58,13 @@ SUBMISSION_HISTORY = [
 ]
 
 class CodeSageHTTPHandler(BaseHTTPRequestHandler):
+    def _safe_write(self, data: bytes):
+        """Write response data, ignoring client disconnects."""
+        try:
+            self.wfile.write(data)
+        except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
+            pass
+
     def end_headers(self):
         # Handle CORS
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -78,7 +85,7 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             response = {"app": "CodeSage AI API", "status": "online"}
-            self.wfile.write(json.dumps(response).encode('utf-8'))
+            self._safe_write(json.dumps(response).encode('utf-8'))
             
         elif path == "/api/dashboard":
             self.send_response(200)
@@ -126,7 +133,7 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
                     {"week": "Week 8", "errors": 12}
                 ]
             }
-            self.wfile.write(json.dumps(dashboard_data).encode('utf-8'))
+            self._safe_write(json.dumps(dashboard_data).encode('utf-8'))
             
         elif path.startswith("/api/submission/"):
             sub_id = path.split("/")[-1]
@@ -142,12 +149,12 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps(found_sub).encode('utf-8'))
+                self._safe_write(json.dumps(found_sub).encode('utf-8'))
             else:
                 self.send_response(404)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({"detail": "Submission not found"}).encode('utf-8'))
+                self._safe_write(json.dumps({"detail": "Submission not found"}).encode('utf-8'))
                 
         elif path == "/api/pricing":
             self.send_response(200)
@@ -204,13 +211,13 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
                     }
                 ]
             }
-            self.wfile.write(json.dumps(pricing_data).encode('utf-8'))
+            self._safe_write(json.dumps(pricing_data).encode('utf-8'))
             
         else:
             self.send_response(404)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({"detail": "Not Found"}).encode('utf-8'))
+            self._safe_write(json.dumps({"detail": "Not Found"}).encode('utf-8'))
 
     def do_POST(self):
         parsed_url = urllib.parse.urlparse(self.path)
@@ -231,7 +238,7 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
                     self.send_response(400)
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
-                    self.wfile.write(json.dumps({"detail": "Code cannot be empty"}).encode('utf-8'))
+                    self._safe_write(json.dumps({"detail": "Code cannot be empty"}).encode('utf-8'))
                     return
                 
                 # Run analyzer (try Gemini AI first, fall back to local heuristics)
@@ -263,13 +270,13 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
                     "suggestions_count": len(result["suggestions"]),
                     "analysis": result
                 }
-                self.wfile.write(json.dumps(response_data).encode('utf-8'))
+                self._safe_write(json.dumps(response_data).encode('utf-8'))
                 
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({"detail": str(e)}).encode('utf-8'))
+                self._safe_write(json.dumps({"detail": str(e)}).encode('utf-8'))
         elif path == "/api/create-subscription":
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
@@ -295,18 +302,18 @@ class CodeSageHTTPHandler(BaseHTTPRequestHandler):
                         "status": "Active"
                     }
                 }
-                self.wfile.write(json.dumps(response_data).encode('utf-8'))
+                self._safe_write(json.dumps(response_data).encode('utf-8'))
                 
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({"detail": str(e)}).encode('utf-8'))
+                self._safe_write(json.dumps({"detail": str(e)}).encode('utf-8'))
         else:
             self.send_response(404)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({"detail": "Not Found"}).encode('utf-8'))
+            self._safe_write(json.dumps({"detail": "Not Found"}).encode('utf-8'))
 
 def run_server(port=None):
     if port is None:

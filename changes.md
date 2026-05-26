@@ -41,6 +41,7 @@ Scaffolded a full-stack monorepo layout containing isolated client and server sp
 - Demo snippet matching changed from normalized structural comparison to **exact string match** — only the exact default demo text matches, preventing user code from hijacking demo results.
 - Removed frontend `runLocalAnalysis` fake predefined matchers (was matching any code containing `"calculate_average"` or `"prices"`) — replaced with proper error state when backend is unreachable.
 - Removed frontend hardcoded initial analysis state — analysis starts empty until user clicks Analyze.
+- C/C++ include-file validation: detects misspelled standard headers (e.g. `stdo.h` → `stdio.h`) using Levenshtein distance, and `printf`/`scanf` used without `#include <stdio.h>`.
 - Duplicate error suppression — missing colon regex check skips if AST already reported a SyntaxError on that line.
 - Beginner-friendly explanations with plain English and everyday analogies (cookies, recipes, sticky notes).
 - Fixed code generation with zero-division guards.
@@ -49,11 +50,14 @@ Scaffolded a full-stack monorepo layout containing isolated client and server sp
 - Integrated Google Gemini 2.5 Flash API for AI-powered code analysis.
 - Two prompt modes: beginner (plain English, analogies, line-by-line) and intermediate (technical).
 - Fallback to local analyzer when Gemini is unavailable or returns errors.
+- Added 2-second hard timeout via daemon thread — prevents blocking the server when Gemini is slow or rate-limited.
 
 ### Updated: `backend/app/main.py`
 - Added Gemini API integration with fallback to local heuristic analyzer.
 - Environment variable support via `load_dotenv()`.
 - CORS configured with `FRONTEND_URL` from environment.
+- Added `_safe_write()` to catch `ConnectionAbortedError`/`BrokenPipeError` when clients disconnect — prevents server crash loops.
+- All `self.wfile.write()` calls replaced with `self._safe_write()` for graceful disconnect handling.
 
 ### Created: `backend/requirements.txt`
 - Configured standard backend packages (`fastapi`, `uvicorn`, `pydantic`) as fallback documentation indicators.

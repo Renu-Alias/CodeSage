@@ -399,6 +399,75 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
     # C / C++ / C# / Dart
     # ------------------------------------------------------------------
     if lang in ("c", "c++", "c#", "dart"):
+        # ---------- Include-file validation (C/C++) ----------
+        if lang in ("c", "c++"):
+            known_headers = {
+                "stdio.h", "stdlib.h", "string.h", "math.h", "time.h",
+                "ctype.h", "stdbool.h", "stdint.h", "assert.h", "errno.h",
+                "float.h", "limits.h", "locale.h", "setjmp.h", "signal.h",
+                "stdarg.h", "stddef.h", "stdio.h", "stdlib.h", "string.h",
+                "tgmath.h", "wchar.h", "wctype.h",
+            }
+            # C++ additional headers
+            if lang == "c++":
+                known_headers.update({
+                    "iostream", "fstream", "sstream", "vector", "string",
+                    "algorithm", "map", "set", "unordered_map", "unordered_set",
+                    "memory", "thread", "mutex", "future", "chrono",
+                })
+            def _edit_distance(a, b):
+                """Simple Levenshtein distance."""
+                m, n = len(a), len(b)
+                dp = list(range(n + 1))
+                for i in range(1, m + 1):
+                    prev = dp[0]
+                    dp[0] = i
+                    for j in range(1, n + 1):
+                        temp = dp[j]
+                        cost = 0 if a[i - 1] == b[j - 1] else 1
+                        dp[j] = min(dp[j] + 1, dp[j - 1] + 1, prev + cost)
+                        prev = temp
+                return dp[n]
+
+            has_stdio = False
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                m = re.match(r'#include\s+[<"](.+?)[>"]', stripped)
+                if m:
+                    header = m.group(1).strip()
+                    if header == "stdio.h" or header == "cstdio":
+                        has_stdio = True
+                    elif header not in known_headers:
+                        best_match = min(known_headers, key=lambda k: _edit_distance(header, k))
+                        dist = _edit_distance(header, best_match)
+                        if dist <= 2:
+                            errors.append({
+                                "line": line_num,
+                                "type": "SyntaxError",
+                                "message": f"Line {line_num}: Did you mean `{best_match}`? `{header}` isn't a standard header."
+                            })
+                        else:
+                            suggestions.append({
+                                "line": line_num,
+                                "title": "Unknown Header",
+                                "message": f"Line {line_num}: `{header}` is not a standard {lang} header. Double-check the spelling."
+                            })
+
+            # Check for printf/scanf without stdio.h
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                if stripped.startswith("//") or stripped.startswith("/*"):
+                    continue
+                if re.search(r'\b(printf|scanf|puts|gets|putchar|getchar)\s*\(', stripped):
+                    if not has_stdio:
+                        errors.append({
+                            "line": line_num,
+                            "type": "SyntaxError",
+                            "message": f"Line {line_num}: You're using `{re.search(r'\b(\w+)\s*\(', stripped).group(1)}` but didn't include `stdio.h`. Add `#include <stdio.h>` at the top."
+                        })
+
         for idx, line in enumerate(lines):
             line_num = idx + 1
             stripped = line.strip()
