@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Play, Copy, Check, Terminal, AlertCircle, Sparkles, FileText, ChevronRight } from 'lucide-react';
+import { LANGUAGES, extToLanguage, acceptExtensions } from '../constants/languages';
 
 export default function Analyze({ sampleCode, setSampleCode }) {
   const [code, setCode] = useState(
@@ -83,14 +84,8 @@ export default function Analyze({ sampleCode, setSampleCode }) {
     if (file) {
       setFilename(file.name);
       // Detect language based on extension
-      const ext = file.name.split('.').pop().toLowerCase();
-      if (ext === 'py') setLanguage('Python');
-      else if (ext === 'js') setLanguage('JavaScript');
-      else if (ext === 'ts') setLanguage('TypeScript');
-      else if (ext === 'cpp' || ext === 'h') setLanguage('C++');
-      else if (ext === 'java') setLanguage('Java');
-      else if (ext === 'go') setLanguage('Go');
-      else if (ext === 'rs') setLanguage('Rust');
+      const detected = extToLanguage(file.name);
+      if (detected) setLanguage(detected);
 
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -282,19 +277,15 @@ export default function Analyze({ sampleCode, setSampleCode }) {
                 value={language} 
                 onChange={(e) => setLanguage(e.target.value)}
               >
-                <option value="Python">Python</option>
-                <option value="JavaScript">JavaScript</option>
-                <option value="TypeScript">TypeScript</option>
-                <option value="C++">C++</option>
-                <option value="Java">Java</option>
-                <option value="Go">Go</option>
-                <option value="Rust">Rust</option>
+                {LANGUAGES.map(lang => (
+                  <option key={lang.name} value={lang.name}>{lang.name}</option>
+                ))}
               </select>
 
               {/* Upload File button */}
               <label className="btn btn-secondary upload-btn-label">
                 <Upload size={14} /> Upload file
-                <input type="file" onChange={handleFileUpload} accept=".py,.js,.ts,.cpp,.h,.java,.go,.rs" style={{ display: 'none' }} />
+                <input type="file" onChange={handleFileUpload} accept={acceptExtensions()} style={{ display: 'none' }} />
               </label>
             </div>
           </div>

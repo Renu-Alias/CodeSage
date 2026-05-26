@@ -164,16 +164,38 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         "message": f"The variable '{var_defined}' is defined but never used. Consider removing it to keep the code tidy."
                     })
                     
-        # Missing semicolons or bad syntax suggestions in JS
-        if language.lower() in ["javascript", "typescript"]:
-            if "const " in line or "let " in line or "var " in line:
+        # Missing semicolons or bad syntax suggestions in JS/TS/C/C#/Dart
+        if language.lower() in ["javascript", "typescript", "c", "c#", "dart"]:
+            stmt_keywords = ["const ", "let ", "var ", "int ", "float ", "double ", "char ", "String ", "bool "]
+            if any(kw in line for kw in stmt_keywords):
                 if not line.strip().endswith(";") and not line.strip().endswith("{") and not line.strip().endswith("}"):
+                    semi_warn = "JavaScript allows omitting semicolons, but keeping them avoids unexpected parser issues." if language.lower() in ["javascript", "typescript"] else f"Missing semicolon at line {line_num}. {language} requires explicit statement termination with ';'."
                     suggestions.append({
                         "line": line_num,
                         "title": "Missing Semicolon",
-                        "message": "JavaScript allows omitting semicolons, but keeping them avoids unexpected parser issues (Automatic Semicolon Insertion errors)."
+                        "message": semi_warn
                     })
                     
+        # C-specific: uninitialized variable patterns
+        if language.lower() == "c":
+            uninit = re.match(r'^\s*(int|char|float|double)\s+\w+;\s*$', line)
+            if uninit:
+                suggestions.append({
+                    "line": line_num,
+                    "title": "Uninitialized Variable",
+                    "message": f"Variable declared at line {line_num} without initialization. In C, uninitialized variables contain garbage values and lead to undefined behavior."
+                })
+
+        # Dart-specific: null safety checks
+        if language.lower() == "dart":
+            nullable = re.match(r'^\s*(String|int|double|bool)\s+\w+\s*=\s*null\s*;', line)
+            if nullable:
+                errors.append({
+                    "line": line_num,
+                    "type": "NullSafetyError",
+                    "message": f"Line {line_num}: Assigning null to a non-nullable type. In Dart, use `?` syntax (e.g. `String?`) for nullable variables."
+                })
+
         # Look for infinity loop while(true)
         if "while(true)" in line.replace(" ", "") or "while True" in line:
             if not any("break" in l for l in lines):
@@ -220,12 +242,29 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         
         if has_div:
             indent = " " * (len(line) - len(line.lstrip()))
-            if language.lower() == "python":
+            lang_lower = language.lower()
+            if lang_lower == "python":
                 fixed_lines.append(f"{indent}# Ensure we don't divide by zero")
                 fixed_lines.append(f"{indent}if len(numbers) == 0: return 0")
-            else:
+            elif lang_lower in ["javascript", "typescript"]:
                 fixed_lines.append(f"{indent}// Ensure we don't divide by zero")
                 fixed_lines.append(f"{indent}if (numbers.length === 0) return 0;")
+            elif lang_lower in ["c", "c++", "c#", "dart"]:
+                comment = "//" if lang_lower != "c#" else "//"
+                fixed_lines.append(f"{indent}{comment} Ensure we don't divide by zero")
+                fixed_lines.append(f"{indent}if (count == 0) return 0;")
+            elif lang_lower == "go":
+                fixed_lines.append(f"{indent}// Ensure we don't divide by zero")
+                fixed_lines.append(f"{indent}if len(numbers) == 0 {{ return 0 }}")
+            elif lang_lower == "rust":
+                fixed_lines.append(f"{indent}// Ensure we don't divide by zero")
+                fixed_lines.append(f"{indent}if numbers.is_empty() {{ return 0; }}")
+            elif lang_lower in ["java", "kotlin"]:
+                fixed_lines.append(f"{indent}// Ensure we don't divide by zero")
+                fixed_lines.append(f"{indent}if (numbers.length == 0) return 0;")
+            else:
+                fixed_lines.append(f"{indent}// Ensure we don't divide by zero")
+                fixed_lines.append(f"{indent}if (condition) return 0;")
             added_guards = True
             
         fixed_lines.append(line)

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Flame, Rocket, Award, Bug, Play, HelpCircle, ChevronRight } from 'lucide-react';
+import { LANGUAGES } from '../constants/languages';
 
 export default function Dashboard({ setCurrentPage, setSampleCode }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -231,8 +232,9 @@ export default function Dashboard({ setCurrentPage, setSampleCode }) {
                   onChange={(e) => setLangFilter(e.target.value)}
                 >
                   <option value="All">All Languages</option>
-                  <option value="Python">Python</option>
-                  <option value="JavaScript">JavaScript</option>
+                  {LANGUAGES.map(lang => (
+                    <option key={lang.name} value={lang.name}>{lang.name}</option>
+                  ))}
                 </select>
               </div>
             </div>

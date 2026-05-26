@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, Code2, AlertTriangle, Lightbulb, Compass, Award, Star } from 'lucide-react';
+import { LANGUAGES } from '../constants/languages';
 
 export default function Home({ setCurrentPage, setSampleCode }) {
   const handleStartAnalysis = (codeType) => {
@@ -45,13 +46,9 @@ export default function Home({ setCurrentPage, setSampleCode }) {
           </div>
 
           <div className="hero-languages">
-            <span className="lang-tag">PYTHON</span>
-            <span className="lang-tag">JAVASCRIPT</span>
-            <span className="lang-tag">JAVA</span>
-            <span className="lang-tag">C++</span>
-            <span className="lang-tag">TYPESCRIPT</span>
-            <span className="lang-tag">GO</span>
-            <span className="lang-tag">RUST</span>
+            {LANGUAGES.map(lang => (
+              <span key={lang.name} className="lang-tag">{lang.name.toUpperCase()}</span>
+            ))}
             <span className="lang-tag">+ MORE</span>
           </div>
         </div>
