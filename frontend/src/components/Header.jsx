@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bell, Settings } from 'lucide-react';
 
-export default function Header({ currentPage, setCurrentPage }) {
+export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsLoggedIn, user }) {
   const navItems = [
     { id: 'home', label: 'Home' },
     { id: 'analyze', label: 'Analyze' },
@@ -19,10 +19,20 @@ export default function Header({ currentPage, setCurrentPage }) {
         const el = document.getElementById('pricing-section');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       }, 100);
+    } else if (targetId === 'dashboard' && !isLoggedIn) {
+      // Direct logged out users to login page
+      setCurrentPage('login');
+      window.scrollTo(0, 0);
     } else {
       setCurrentPage(targetId);
       window.scrollTo(0, 0);
     }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentPage('home');
+    window.scrollTo(0, 0);
   };
 
   return (
@@ -59,15 +69,9 @@ export default function Header({ currentPage, setCurrentPage }) {
 
         {/* Right Action Icons / Profiles */}
         <div className="header-actions">
-          {currentPage === 'home' || currentPage === 'pricing' ? (
+          {isLoggedIn ? (
             <>
               <span className="free-plan-badge">Free plan</span>
-              <div className="profile-avatar">
-                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100" alt="Student Profile" />
-              </div>
-            </>
-          ) : (
-            <>
               <button className="icon-btn" title="Notifications">
                 <Bell size={20} className="header-icon" />
                 <span className="notification-dot" />
@@ -75,8 +79,29 @@ export default function Header({ currentPage, setCurrentPage }) {
               <button className="icon-btn" title="Settings">
                 <Settings size={20} className="header-icon" />
               </button>
-              <button className="btn btn-primary btn-sign-in" onClick={() => setCurrentPage('dashboard')}>
+              <div 
+                className="profile-avatar" 
+                onClick={() => setCurrentPage('dashboard')} 
+                style={{ cursor: 'pointer' }}
+                title={user?.name || "Student Profile"}
+              >
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100" alt="Student Profile" />
+              </div>
+              <button 
+                className="btn btn-secondary btn-sign-in" 
+                onClick={handleLogout}
+                style={{ padding: '6px 12px', fontSize: '12px' }}
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-secondary btn-sign-in" onClick={() => setCurrentPage('login')}>
                 Sign In
+              </button>
+              <button className="btn btn-primary btn-sign-in" onClick={() => setCurrentPage('signup')}>
+                Sign Up
               </button>
             </>
           )}
