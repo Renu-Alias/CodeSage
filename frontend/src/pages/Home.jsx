@@ -263,8 +263,10 @@ export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan })
               <p className="tier-desc">Essential tutoring</p>
               
               <ul className="tier-features">
-                <li>✓ 5 snippets per day</li>
+                <li>✓ 10 snippets per day</li>
                 <li>✓ Standard bug detection</li>
+                <li>✓ Weakness report dashboard</li>
+                <li>✓ Targeted exercise sets</li>
                 <li>✓ Community support</li>
                 <li>✓ Basic explanations</li>
               </ul>
@@ -288,8 +290,6 @@ export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan })
               <ul className="tier-features">
                 <li>✓ Unlimited snippets</li>
                 <li>✓ Deep logic analysis</li>
-                <li>✓ Weakness report dashboard</li>
-                <li>✓ Targeted exercise sets</li>
                 <li>✓ Priority AI processing</li>
               </ul>
               
