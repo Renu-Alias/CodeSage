@@ -13,6 +13,9 @@ export const LANGUAGES = [
   { name: 'Swift',     extensions: ['.swift'] },
   { name: 'Kotlin',    extensions: ['.kt', '.kts'] },
   { name: 'C#',        extensions: ['.cs'] },
+  { name: 'SQL',       extensions: ['.sql'] },
+  { name: 'HTML',      extensions: ['.html', '.htm'] },
+  { name: 'CSS',       extensions: ['.css'] },
 ];
 
 export function extToLanguage(filename) {
