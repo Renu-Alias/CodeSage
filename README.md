@@ -2,7 +2,9 @@
 
 > AI-powered code analysis and tutoring platform that helps beginner programmers debug, understand, and improve their code through personalized feedback and learning insights.
 
-![logo](./CodeSage/logo.png)
+<p align="center">
+    <img src="logo.png" alt="logo">
+</p>
 
 ## What is CodeSage?
 
