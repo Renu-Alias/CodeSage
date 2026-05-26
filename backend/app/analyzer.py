@@ -126,6 +126,20 @@ def _find_unclosed_multiline(code, lang):
     if in_single: issues.append({"line": len(lines), "type": "SyntaxError", "message": "Single-quoted string was started but never closed."})
     return issues
 
+def _find_string_end(s):
+    """Find the end index of a C string literal at the start of s. Returns index after closing quote, or -1."""
+    if not s or s[0] != '"':
+        return -1
+    i = 1
+    while i < len(s):
+        if s[i] == '\\':
+            i += 2
+        elif s[i] == '"':
+            return i + 1
+        else:
+            i += 1
+    return -1
+
 def _edit_distance(a, b):
     m, n = len(a), len(b)
     dp = list(range(n + 1))
@@ -172,6 +186,12 @@ def _get_error_explanation(err, code_lines, lang):
 
     if "MissingSemicolon" in etype or "missing semicolon" in msg.lower():
         return f"**Line {line}**: `{code_line}`\n\nEvery statement must end with `;`. It's like a period at the end of a sentence — it tells the compiler \"this instruction is complete.\"\n\n**Fix:** Add `;` at the end of the line."
+
+    if "TypeMismatch" in etype:
+        if "printf" in msg:
+            return f"**Line {line}**: `{code_line}`\n\nIn `printf`, you use `%d`, `%f`, `%c` etc. to **print values**. Adding `&` gives the variable's memory address instead of its value — like giving someone your house address when they asked for your phone number.\n\n**Fix:** Remove the `&` — just use the variable name directly."
+        if "scanf" in msg:
+            return f"**Line {line}**: `{code_line}`\n\nIn `scanf`, you need `&` because `scanf` **writes** a value into your variable. It needs to know where the variable lives in memory — like telling a delivery driver your address so they know where to drop the package.\n\n**Fix:** Add `&` before the variable name."
 
     return f"**Line {line}**: {msg}"
 
@@ -386,14 +406,55 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                 stripped = line.strip()
                 if stripped.startswith("//") or stripped.startswith("/*"): continue
                 fn_match = re.search(r'\b(printf|scanf|puts|gets|putchar|getchar)\s*\(', stripped)
-                if fn_match and not has_stdio:
+                if fn_match:
                     fn_name = fn_match.group(1)
-                    errors.append({
-                        "line": line_num, "type": "SyntaxError",
-                        "message": f"Line {line_num}: Using `{fn_name}` but `stdio.h` isn't included. Add `#include <stdio.h>` at the top."
-                    })
-                    if "#include <stdio.h>" not in prepend_lines:
-                        prepend_lines.append("#include <stdio.h>")
+                    if not has_stdio:
+                        errors.append({
+                            "line": line_num, "type": "SyntaxError",
+                            "message": f"Line {line_num}: Using `{fn_name}` but `stdio.h` isn't included. Add `#include <stdio.h>` at the top."
+                        })
+                        if "#include <stdio.h>" not in prepend_lines:
+                            prepend_lines.append("#include <stdio.h>")
+
+                    # Check printf("%d", &var) — passing address where value is expected
+                    if fn_name == "printf":
+                        pf_args = re.search(r'printf\s*\(([^)]+)\)', stripped)
+                        if pf_args:
+                            all_args = pf_args.group(1)
+                            # first arg is the format string
+                            fmt_end = _find_string_end(all_args)
+                            if fmt_end > 0:
+                                rest = all_args[fmt_end:].strip()
+                                if rest.startswith(","):
+                                    value_args = [a.strip() for a in rest[1:].split(",")]
+                                    for va in value_args:
+                                        if va.startswith("&") and re.match(r'&[a-zA-Z_]', va):
+                                            var_name = va[1:]
+                                            errors.append({
+                                                "line": line_num, "type": "TypeMismatch",
+                                                "message": f"Line {line_num}: In `printf`, you passed `{va}` (address of `{var_name}`), but it expects a **value**, not an address. For `printf`, use `{var_name}` (without `&`). `&` is for `scanf`, not `printf`."
+                                            })
+
+                    # Check scanf("%d", var) — missing & where address is expected
+                    if fn_name == "scanf":
+                        sf_args = re.search(r'scanf\s*\(([^)]+)\)', stripped)
+                        if sf_args:
+                            all_args = sf_args.group(1)
+                            fmt_end = _find_string_end(all_args)
+                            if fmt_end > 0:
+                                rest = all_args[fmt_end:].strip()
+                                if rest.startswith(","):
+                                    value_args = [a.strip() for a in rest[1:].split(",")]
+                                    for va in value_args:
+                                        va_clean = va.rstrip(")")
+                                        if va_clean and not va_clean.startswith("&") and re.match(r'[a-zA-Z_]', va_clean):
+                                            var_name = re.match(r'([a-zA-Z_]\w*)', va_clean)
+                                            if var_name:
+                                                vn = var_name.group(1)
+                                                errors.append({
+                                                    "line": line_num, "type": "TypeMismatch",
+                                                    "message": f"Line {line_num}: In `scanf`, you passed `{vn}` (a value), but `scanf` needs an **address**. Use `&{vn}` instead. `scanf` writes to variables, so it needs to know where they live in memory."
+                                                })
 
         for idx, line in enumerate(lines):
             line_num = idx + 1
@@ -473,8 +534,27 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         })
 
     # ------------------------------------------------------------------
+    # FIXED CODE — apply all collected fixes
+    # ------------------------------------------------------------------
+    fixed_lines = list(prepend_lines)
+    for idx, line in enumerate(lines):
+        line_num = idx + 1
+        if line_num in fixes:
+            for fix in fixes[line_num]:
+                fix_type = fix[0]
+                if fix_type == "replace":
+                    line = fix[2]
+                elif fix_type == "append":
+                    line = line.rstrip() + fix[1]
+                elif fix_type == "wrap":
+                    line = fix[2]
+        fixed_lines.append(line)
+    fixed_code = "\n".join(fixed_lines)
+
+    # ------------------------------------------------------------------
     # EXPLANATION
     # ------------------------------------------------------------------
+    display_lines = fixed_lines if errors else lines
     if mode.lower() == "beginner":
         if errors:
             explanation = "### What went wrong\n\nYour code has some bugs. Think of code like a recipe — if a step is wrong, the dish won't come out right!\n\n"
@@ -484,11 +564,11 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             explanation = "### Looking good!\n\nYour code runs without crashes. Check the Suggestions tab for tips to make it cleaner.\n\n"
 
         explanation += "### What each line does\n"
-        for idx, line in enumerate(lines[:8]):
+        for idx, line in enumerate(display_lines[:8]):
             if line.strip():
                 explanation += f"- **Line {idx+1}**: `{line.strip()[:60]}`\n"
-        if len(lines) > 8:
-            explanation += f"- ... and {len(lines)-8} more lines.\n"
+        if len(display_lines) > 8:
+            explanation += f"- ... and {len(display_lines)-8} more lines.\n"
     else:
         if errors:
             explanation = f"### Issues Detected\n\n{len(errors)} error(s) found.\n\n"
@@ -497,41 +577,11 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         else:
             explanation = "### Assessment\n\nNo critical issues detected.\n"
         explanation += "\n### Code Flow\n"
-        for idx, line in enumerate(lines[:5]):
+        for idx, line in enumerate(display_lines[:5]):
             if line.strip():
                 explanation += f"- **L{idx+1}**: `{line.strip()[:60]}`\n"
-        if len(lines) > 5:
-            explanation += f"- ... and {len(lines)-5} more lines.\n"
-
-    # ------------------------------------------------------------------
-    # FIXED CODE — apply all collected fixes
-    # ------------------------------------------------------------------
-    # 1. Add prepended lines (like missing #include)
-    fixed_lines = list(prepend_lines)
-
-    # 2. Process each line, applying fixes
-    for idx, line in enumerate(lines):
-        line_num = idx + 1
-        if line_num in fixes:
-            for fix in fixes[line_num]:
-                fix_type = fix[0]
-                if fix_type == "replace":
-                    # fix = ("replace", old_line, new_line)
-                    line = fix[2]
-                elif fix_type == "append":
-                    # fix = ("append", text_to_add)
-                    line = line.rstrip() + fix[1]
-                elif fix_type == "wrap":
-                    # fix = ("wrap", original_line, replacement_block)
-                    line = fix[2]
-        fixed_lines.append(line)
-
-    # If prepend_lines were added, ensure exactly one blank line before original code
-    if prepend_lines and lines[0].strip():
-        if fixed_lines and fixed_lines[-1].strip() or (len(fixed_lines) > len(prepend_lines) and fixed_lines[len(prepend_lines)].strip()):
-            pass  # keep as-is
-
-    fixed_code = "\n".join(fixed_lines)
+        if len(display_lines) > 5:
+            explanation += f"- ... and {len(display_lines)-5} more lines.\n"
 
     return {
         "errors": errors,
