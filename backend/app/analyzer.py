@@ -565,8 +565,9 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
 
         explanation += "### What each line does\n"
         for idx, line in enumerate(display_lines[:8]):
-            if line.strip():
-                explanation += f"- **Line {idx+1}**: `{line.strip()[:60]}`\n"
+            first_line = line.strip().split("\n")[0][:60]
+            if first_line:
+                explanation += f"- **Line {idx+1}**: `{first_line}`\n"
         if len(display_lines) > 8:
             explanation += f"- ... and {len(display_lines)-8} more lines.\n"
     else:
@@ -578,8 +579,9 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             explanation = "### Assessment\n\nNo critical issues detected.\n"
         explanation += "\n### Code Flow\n"
         for idx, line in enumerate(display_lines[:5]):
-            if line.strip():
-                explanation += f"- **L{idx+1}**: `{line.strip()[:60]}`\n"
+            first_line = line.strip().split("\n")[0][:60]
+            if first_line:
+                explanation += f"- **L{idx+1}**: `{first_line}`\n"
         if len(display_lines) > 5:
             explanation += f"- ... and {len(display_lines)-5} more lines.\n"
 
