@@ -186,6 +186,67 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     "message": f"Variable declared at line {line_num} without initialization. In C, uninitialized variables contain garbage values and lead to undefined behavior."
                 })
 
+        # SQL-specific: dangerous patterns
+        if language.lower() == "sql":
+            if re.search(r'\bupdate\b.*\bset\b', line, re.I) and not re.search(r'\bwhere\b', line, re.I):
+                errors.append({
+                    "line": line_num,
+                    "type": "MissingWHERE",
+                    "message": f"Line {line_num}: UPDATE without a WHERE clause will modify ALL rows in the table. Always add a WHERE condition to target specific records."
+                })
+            if re.search(r'\bdelete\b', line, re.I) and not re.search(r'\bwhere\b', line, re.I):
+                errors.append({
+                    "line": line_num,
+                    "type": "MissingWHERE",
+                    "message": f"Line {line_num}: DELETE without a WHERE clause will remove ALL rows from the table. Always specify which rows to delete."
+                })
+            if re.search(r"drop\s+table", line, re.I):
+                suggestions.append({
+                    "line": line_num,
+                    "title": "Irreversible Operation",
+                    "message": "DROP TABLE permanently deletes the table and its data. Consider using a backup or transaction before running this."
+                })
+
+        # HTML-specific: common beginner mistakes
+        if language.lower() == "html":
+            if re.search(r'<(img|br|hr|input|meta|link)>$', line):
+                suggestions.append({
+                    "line": line_num,
+                    "title": "Self-Closing Tag",
+                    "message": f"Line {line_num}: In HTML5, void elements like `<{line.strip().strip('<>')}>` don't need a closing slash, but adding `/>` is valid. Be consistent."
+                })
+            if re.search(r'<(div|p|span|h[1-6]|a|li|ul|ol|table|section|header|footer)>$', line) and '/' not in line:
+                if not any(f'</{tag}' in line or f'</{line.strip()[1:].split()[0].strip(">")}' in l for l in lines[line_num:] for tag in ['div','p','span']):
+                    open_tag = re.search(r'<(\w+)', line)
+                    if open_tag:
+                        tag_name = open_tag.group(1)
+                        suggestions.append({
+                            "line": line_num,
+                            "title": "Missing Closing Tag",
+                            "message": f"Line {line_num}: The `<{tag_name}>` tag was opened but may not be properly closed. Ensure you have a corresponding `</{tag_name}>` later."
+                        })
+
+        # CSS-specific: common beginner mistakes
+        if language.lower() == "css":
+            if re.search(r':\s*\d+\s*$', line) and not re.search(r'(px|em|rem|%|vh|vw|pt|cm|mm|in|ch|ex|vmin|vmax|s|ms)', line):
+                suggestions.append({
+                    "line": line_num,
+                    "title": "Missing CSS Unit",
+                    "message": f"Line {line_num}: Numeric value without a unit. CSS requires units like `px`, `em`, `rem`, or `%` for most length values (e.g., `16px` instead of `16`)."
+                })
+            if re.search(r'color\s*:\s*\d+', line, re.I):
+                errors.append({
+                    "line": line_num,
+                    "type": "InvalidColorValue",
+                    "message": f"Line {line_num}: Plain numbers are not valid CSS color values. Use named colors, hex (`#ff0000`), rgb(`rgb(255,0,0)`), or hsl values."
+                })
+            if re.search(r'[a-zA-Z]+\s*{[^}]*}', line) and not re.search(r'[a-zA-Z]+\s*:\s*[^;]+;', line):
+                suggestions.append({
+                    "line": line_num,
+                    "title": "Empty or Invalid Rule",
+                    "message": f"Line {line_num}: This CSS rule appears to have no valid property declarations. Make sure every rule has at least one `property: value;` pair."
+                })
+
         # Dart-specific: null safety checks
         if language.lower() == "dart":
             nullable = re.match(r'^\s*(String|int|double|bool)\s+\w+\s*=\s*null\s*;', line)
