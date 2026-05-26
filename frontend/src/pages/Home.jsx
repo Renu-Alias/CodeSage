@@ -46,7 +46,7 @@ export default function Home({ setCurrentPage, setSampleCode }) {
           </div>
 
           <div className="hero-languages">
-            {LANGUAGES.map(lang => (
+            {LANGUAGES.slice(0, 7).map(lang => (
               <span key={lang.name} className="lang-tag">{lang.name.toUpperCase()}</span>
             ))}
             <span className="lang-tag">+ MORE</span>
