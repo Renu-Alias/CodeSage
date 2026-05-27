@@ -158,6 +158,7 @@ def _get_error_explanation(err, code_lines, lang):
     msg = err.get("message", "")
     code_line = code_lines[line - 1].strip() if line <= len(code_lines) else ""
 
+    # --- SyntaxError sub-types ---
     if "SyntaxError" in etype:
         if "missing colon" in msg.lower() or "expected ':'" in msg.lower():
             snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
@@ -173,6 +174,7 @@ def _get_error_explanation(err, code_lines, lang):
             if "(" in msg or ")" in msg or "[" in msg or "]" in msg or "{" in msg or "}" in msg:
                 return f"**Line {line}**: `{snippet}`\n\nA bracket `(`, `[`, or `{{` was opened but never closed. Brackets always work in pairs — like two hands clapping.\n\n**Fix:** Find where the bracket was opened and add the matching closing bracket."
 
+    # --- Named error types ---
     if "ZeroDivisionError" in etype or "Division" in etype:
         snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
         return f"**Line {line}**: `{snippet}`\n\nDividing by zero crashes your program. Think of sharing 10 cookies with 0 friends — it's impossible!\n\n**Fix:** Before dividing, check if the value is not zero: `if count != 0:`"
@@ -192,6 +194,31 @@ def _get_error_explanation(err, code_lines, lang):
             return f"**Line {line}**: `{code_line}`\n\nIn `printf`, you use `%d`, `%f`, `%c` etc. to **print values**. Adding `&` gives the variable's memory address instead of its value — like giving someone your house address when they asked for your phone number.\n\n**Fix:** Remove the `&` — just use the variable name directly."
         if "scanf" in msg:
             return f"**Line {line}**: `{code_line}`\n\nIn `scanf`, you need `&` because `scanf` **writes** a value into your variable. It needs to know where the variable lives in memory — like telling a delivery driver your address so they know where to drop the package.\n\n**Fix:** Add `&` before the variable name."
+
+    if "AssignmentInCondition" in etype:
+        return f"**Line {line}**: `{code_line}`\n\nYou used `=` (single equals) inside a condition. In programming, `=` means \"assign\" (store a value), while `==` means \"compare\" (check if two things are equal). Using `=` here accidentally changes the variable instead of checking it!\n\n**Fix:** Replace `=` with `==`."
+
+    if "NameError" in etype:
+        snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
+        return f"**Line {line}**: `{snippet}`\n\nPython can't find this variable. It's like calling someone by the wrong name — Python doesn't know what you mean. You might have a typo in the variable name.\n\n**Fix:** Check the spelling and make sure you defined the variable before using it."
+
+    if "BareExcept" in etype:
+        return f"**Line {line}**: `{code_line}`\n\nA bare `except:` catches every possible error, including things like Ctrl+C that should stop your program. It's like a butterfly net that catches butterflies AND grenades.\n\n**Fix:** Use `except Exception:` to catch normal errors safely."
+
+    if "LooseEquality" in etype:
+        return f"**Line {line}**: `{code_line}`\n\nUsing `==` in JavaScript can give surprising results. For example, `0 == false` is `true` and `'' == 0` is `true`. That's because `==` converts types before comparing. Use `===` to check both value AND type.\n\n**Fix:** Replace `==` with `===`."
+
+    if "MissingRadix" in etype:
+        return f"**Line {line}**: `{code_line}`\n\n`parseInt()` without a second argument can guess the wrong number base. For example, `parseInt('08')` might give 0 (treating it as octal). Always specify base 10 for normal numbers.\n\n**Fix:** Use `parseInt(x, 10)`."
+
+    if "MainReturnType" in etype:
+        return f"**Line {line}**: `{code_line}`\n\n`void main()` is not standard C. The `int` in `int main()` lets your program tell the OS whether it succeeded (return 0) or failed (return 1).\n\n**Fix:** Change `void main()` to `int main()` and add `return 0;` at the end."
+
+    if "NullComparison" in etype:
+        return f"**Line {line}**: `{code_line}`\n\nIn SQL, `= NULL` doesn't work because NULL means \"unknown\" — and nothing equals an unknown value. Use `IS NULL` instead.\n\n**Fix:** Replace `= NULL` with `IS NULL`."
+
+    if "MissingDoctype" in etype:
+        return f"**Line {line}**: `{code_line}`\n\nWithout `<!DOCTYPE html>`, older browsers switch to \"quirks mode\" and may display your page incorrectly. It's like telling the browser which rulebook to follow.\n\n**Fix:** Add `<!DOCTYPE html>` as the very first line."
 
     return f"**Line {line}**: {msg}"
 
@@ -317,6 +344,22 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
 
         for idx, line in enumerate(lines):
             line_num = idx + 1
+            stripped = line.strip()
+            if stripped.startswith("#") or stripped.startswith('"'): continue
+            var_used = re.findall(r'(?<![a-zA-Z_.])([a-zA-Z_]\w*)(?![a-zA-Z_.])', stripped)
+            blacklist = {'True', 'False', 'None', 'range', 'len', 'list', 'dict', 'set', 'str', 'int', 'float', 'print', 'open', 'sum', 'min', 'max', 'abs', 'type', 'isinstance', 'hasattr', 'getattr', 'setattr', 'input', 'range', 'enumerate', 'zip', 'map', 'filter', 'sorted', 'reversed', 'any', 'all', 'super', 'self', 'cls', 'Exception', 'ValueError', 'TypeError', 'KeyError', 'IndexError', 'StopIteration', 'ImportError', 'AttributeError', 'NameError', 'ZeroDivisionError', 'FileNotFoundError', 'not', 'and', 'or', 'is', 'in', 'if', 'else', 'elif', 'for', 'while', 'def', 'class', 'return', 'yield', 'import', 'from', 'as', 'with', 'try', 'except', 'finally', 'raise', 'pass', 'break', 'continue', 'global', 'nonlocal', 'lambda'}
+            for v in var_used:
+                if v not in defined_vars and v not in blacklist:
+                    best = min(defined_vars, key=lambda dv: _edit_distance(v, dv)) if defined_vars else None
+                    if best and _edit_distance(v, best) <= 2 and best != v and line_num > defined_vars[best]:
+                        possible_line = defined_vars.get(best, 0)
+                        errors.append({
+                            "line": line_num, "type": "NameError",
+                            "message": f"Line {line_num}: `{v}` is not defined. Did you mean `{best}` (defined on line {possible_line})? This is like writing \"apples\" when you meant \"apples\" — a tiny typo makes Python confused."
+                        })
+
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
             div_match = re.search(r'/\s*([a-zA-Z_]\w*)', line)
             if div_match and not any(kw in line for kw in ["if", "check", "!=", ">", "=="]):
                 var_name = div_match.group(1)
@@ -336,6 +379,43 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     "message": f"Line {line_num}: This loop never stops! Add a `break` statement or a condition that becomes False."
                 })
 
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            m = re.match(r'^\s*except\s*:', stripped)
+            if m:
+                errors.append({
+                    "line": line_num, "type": "BareExcept",
+                    "message": f"Line {line_num}: Bare `except:` catches ALL errors including Ctrl+C. Use `except Exception:` to catch normal errors safely."
+                })
+
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            def_match = re.match(r'^\s*def\s+\w+\s*\((.*?)\)\s*:', stripped)
+            if def_match:
+                params = def_match.group(1)
+                bad_defaults = re.findall(r'=\s*(\[\s*\]|\{\s*\}|set\(\s*\)|list\(\s*\))', params)
+                if bad_defaults:
+                    suggestions.append({
+                        "line": line_num, "title": "Mutable Default Argument",
+                        "message": f"Line {line_num}: Using `{bad_defaults[0]}` as default argument is shared across all calls. Use `None` instead and create a fresh one inside the function."
+                    })
+
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            ctrl_keywords = r'^\s*(if|elif|while)\b'
+            if re.match(ctrl_keywords, stripped):
+                assign_in_cond = re.search(r'(?<![=!<>])=(?!=)', stripped.split(':')[0] if ':' in stripped else stripped.split('{')[0] if '{' in stripped else stripped)
+                if assign_in_cond and '==' not in stripped.split(assign_in_cond.group(0))[0][-2:] if assign_in_cond else True:
+                    pass
+                if assign_in_cond:
+                    errors.append({
+                        "line": line_num, "type": "AssignmentInCondition",
+                        "message": f"Line {line_num}: You used `=` (assignment) in a condition. Did you mean `==` (comparison)? A single `=` **assigns** a value, `==` **checks** if things are equal."
+                    })
+
     # ------------------------------------------------------------------
     # JS / TS
     # ------------------------------------------------------------------
@@ -351,6 +431,29 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         "message": f"Line {line_num}: Missing `;`. Every statement must end with a semicolon — like a period at the end of a sentence."
                     })
                     fixes.setdefault(line_num, []).append(("append", ";"))
+
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            if not stripped or stripped.startswith("//") or stripped.startswith("/*"): continue
+            loose_eq = re.findall(r'(?<![=!<>])==(?!=)', stripped)
+            if loose_eq:
+                if re.search(r'\b(if|while|return|switch)\b', stripped) or '?' in stripped:
+                    errors.append({
+                        "line": line_num, "type": "LooseEquality",
+                        "message": f"Line {line_num}: Use `===` instead of `==`. In JS, `==` does type coercion (e.g., `0 == false` is `true`), which can hide bugs. `===` checks both value AND type."
+                    })
+            pi = re.search(r'\bparseInt\s*\(', stripped)
+            if pi and ',' not in stripped[stripped.index('(')+1:]:
+                errors.append({
+                    "line": line_num, "type": "MissingRadix",
+                    "message": f"Line {line_num}: `parseInt()` needs a second argument (the radix). Use `parseInt(x, 10)` for decimal. Without it, `parseInt('08')` gives 0 in older browsers."
+                })
+            if stripped.startswith("var "):
+                suggestions.append({
+                    "line": line_num, "title": "Use let/const instead of var",
+                    "message": f"Line {line_num}: Use `let` or `const` instead of `var`. `var` has confusing scoping rules — it's like a messy room where you can't find anything."
+                })
 
     # ------------------------------------------------------------------
     # C / C++ / C# / Dart
@@ -477,6 +580,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     fixes.setdefault(line_num, []).append(("append", ";"))
             if not stripped.startswith("#") and not stripped.startswith("//") and not stripped.startswith("/*"):
                 if not stripped.endswith(";") and not stripped.endswith("{") and not stripped.endswith("}") and not stripped.endswith("("):
+                    if '{' in stripped: continue
                     ctrl_kws = r'^\s*(if|for|while|switch|else|case|default|do)\b'
                     if not re.match(ctrl_kws, stripped):
                         fn_or_assign = re.search(r'\b\w+\s*\(', stripped) or re.search(r'\w+\s*=', stripped)
@@ -487,7 +591,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                     "line": line_num, "type": "MissingSemicolon",
                                     "message": f"Line {line_num}: Missing `;`. In {language}, every statement ends with a semicolon — like a period at the end of a sentence."
                                 })
-                                fixes.setdefault(line_num, []).append(("append", ";"))
+                    fixes.setdefault(line_num, []).append(("append", ";"))
 
         if lang == "c":
             for idx, line in enumerate(lines):
@@ -498,6 +602,29 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         "line": line_num, "title": "Uninitialized Variable",
                         "message": f"Line {line_num}: Variable declared without a value. In C, uninitialized variables contain garbage data."
                     })
+
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                if stripped == "void main()" or stripped.startswith("void main("):
+                    errors.append({
+                        "line": line_num, "type": "MainReturnType",
+                        "message": f"Line {line_num}: `void main()` is not standard C. Use `int main()` — the `int` tells the OS your program ran successfully (return 0) or had an error (return 1)."
+                    })
+                    fixes.setdefault(line_num, []).append(("replace", line, line.replace("void main", "int main", 1)))
+
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                if stripped.startswith("//") or stripped.startswith("/*"): continue
+                ctrl_keywords = r'^\s*(if|while|switch)\b'
+                if re.match(ctrl_keywords, stripped):
+                    assign_in_cond = re.search(r'(?<![=!<>])=(?!=)', stripped)
+                    if assign_in_cond:
+                        errors.append({
+                            "line": line_num, "type": "AssignmentInCondition",
+                            "message": f"Line {line_num}: You used `=` (assignment) in a condition. Did you mean `==` (comparison)? A single `=` **assigns** a value, `==` **checks** if values are equal."
+                        })
 
     # ------------------------------------------------------------------
     # SQL
@@ -516,6 +643,12 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     "line": line_num, "type": "MissingWHERE",
                     "message": f"Line {line_num}: DELETE without a WHERE clause removes ALL rows. Always specify which rows to delete."
                 })
+            null_cmp = re.search(r'(WHERE\s+.+?)\s*=\s*NULL\b', stripped, re.I)
+            if null_cmp:
+                errors.append({
+                    "line": line_num, "type": "NullComparison",
+                    "message": f"Line {line_num}: Use `IS NULL` instead of `= NULL`. In SQL, nothing equals NULL (not even NULL itself!). `IS NULL` checks if a value is missing."
+                })
 
     # ------------------------------------------------------------------
     # HTML, CSS
@@ -529,7 +662,24 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     "line": line_num, "title": "Self-Closing Tag",
                     "message": f"Line {line_num}: `<{stripped.strip('<>')}>` doesn't need a closing tag."
                 })
+        if not any("<!DOCTYPE" in l for l in lines):
+            if re.search(r'<html', code, re.I):
+                errors.append({
+                    "line": 1, "type": "MissingDoctype",
+                    "message": "Missing `<!DOCTYPE html>` at the top. This tells the browser to use modern standards mode instead of quirks mode — like choosing the right map before driving."
+                })
     if lang == "css":
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            brace_count = 0
+            for l in lines:
+                brace_count += l.count('{') - l.count('}')
+            if brace_count > 0:
+                suggestions.append({
+                    "line": line_num, "title": "Unclosed Brace",
+                    "message": "You have {brace_count} unclosed `{{` in your CSS. Every `{{` needs a matching `}}` — like closing a box you opened."
+                })
         for idx, line in enumerate(lines):
             line_num = idx + 1
             stripped = line.strip()
