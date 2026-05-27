@@ -154,3 +154,39 @@ Scaffolded a full-stack monorepo layout containing isolated client and server sp
 
 ## 4. Housekeeping & Cleanups
 - **[DELETE] `backend/app/router.py`**: Removed redundant FastAPI router file to ensure a perfectly clean, consolidated, single-file server deployment.
+
+---
+
+## 5. Learning Path Intelligence (USP #1 — README)
+
+Updated `README.md` to explain how CodeSage tracks mistakes over time:
+- Instead of just flagging one-off errors, CodeSage spots what each student struggles with again and again (like "loop logic" or "variable scoping").
+- It builds a personal weakness report: *"You struggle with loop logic and variable scoping. Here are 3 exercises."*
+- No other tool tracks a student's growth across sessions like this. It turns CodeSage from a one-shot debugger into a learning companion.
+
+---
+
+## 6. Explain Like I'm a Student (USP #2 — README)
+
+Updated `README.md` to highlight CodeSage's beginner-friendly explanations:
+- Most AI tools explain errors in developer jargon. CodeSage explains at the student's own level (Beginner or Intermediate).
+- Beginner mode uses everyday analogies, not technical words. For example: *"Your loop never stops because there's no exit condition — think of it like a song on repeat with no stop button."*
+- Replit and Copilot don't offer level-aware explanations like this.
+
+---
+
+## 7. Diverse Error Detection Test Suite
+
+Ran 30 comprehensive tests covering all supported languages with three error types (syntax, logical, runtime):
+
+| Language | Tests | What was tested |
+|---|---|---|
+| Python | 11 | Missing colon on `if`/`for`/`def`, unclosed parens/brackets, `=` vs `==` in conditions, infinite `while True`, division guard, bare `except:`, name typos (Levenshtein), mutable default args, mixed indentation |
+| JavaScript | 5 | Missing semicolons on `const`/`let`/`var`/`return`, loose `==` vs `===`, `parseInt` without radix, `var` → `let`/`const` suggestion |
+| C | 7 | Missing semicolons on declarations, header typo auto-fix (`stdi.h` → `stdio.h`), `=` in `if` conditions, `void main` → `int main`, `printf(&x)` mismatch, `scanf(no &)` mismatch, missing `#include <stdio.h>` |
+| SQL | 3 | `UPDATE`/`DELETE` without `WHERE`, `= NULL` → `IS NULL` |
+| HTML | 1 | Missing `<!DOCTYPE html>` |
+| CSS | 1 | Unclosed `{` brace |
+| Demos | 2 | Exact-match hardcoded demos (calculate_average, loop_price) |
+
+**Result: 30/30 tests passed.**

@@ -345,7 +345,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         for idx, line in enumerate(lines):
             line_num = idx + 1
             stripped = line.strip()
-            if stripped.startswith("#") or stripped.startswith('"'): continue
+            if not stripped or stripped.startswith("#") or stripped.startswith('"'): continue
             var_used = re.findall(r'(?<![a-zA-Z_.])([a-zA-Z_]\w*)(?![a-zA-Z_.])', stripped)
             blacklist = {'True', 'False', 'None', 'range', 'len', 'list', 'dict', 'set', 'str', 'int', 'float', 'print', 'open', 'sum', 'min', 'max', 'abs', 'type', 'isinstance', 'hasattr', 'getattr', 'setattr', 'input', 'range', 'enumerate', 'zip', 'map', 'filter', 'sorted', 'reversed', 'any', 'all', 'super', 'self', 'cls', 'Exception', 'ValueError', 'TypeError', 'KeyError', 'IndexError', 'StopIteration', 'ImportError', 'AttributeError', 'NameError', 'ZeroDivisionError', 'FileNotFoundError', 'not', 'and', 'or', 'is', 'in', 'if', 'else', 'elif', 'for', 'while', 'def', 'class', 'return', 'yield', 'import', 'from', 'as', 'with', 'try', 'except', 'finally', 'raise', 'pass', 'break', 'continue', 'global', 'nonlocal', 'lambda'}
             for v in var_used:
@@ -364,6 +364,17 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             if div_match and not any(kw in line for kw in ["if", "check", "!=", ">", "=="]):
                 var_name = div_match.group(1)
                 if var_name not in ('len', 'sum', 'min', 'max', 'abs', 'float', 'int'):
+                    # Check surrounding lines for a guard condition on this variable
+                    guard_found = False
+                    context_start = max(0, idx - 3)
+                    context_end = min(len(lines), idx + 1)
+                    for si in range(context_start, context_end):
+                        sl = lines[si].strip()
+                        if sl.startswith("#") or sl.startswith("//"): continue
+                        if re.search(r'\bif\b.*\b' + re.escape(var_name) + r'\b', sl) or re.search(r'\b' + re.escape(var_name) + r'\b.*!=', sl):
+                            guard_found = True
+                            break
+                    if guard_found: continue
                     errors.append({
                         "line": line_num, "type": "ZeroDivisionError",
                         "message": f"Line {line_num}: Dividing by `{var_name}` without checking if it's zero first. Imagine sharing 10 cookies with 0 friends — it doesn't work! Check `if {var_name} != 0:` before dividing."
@@ -411,10 +422,12 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     if sep in parens: parens = parens.split(sep)[0]
                 assign_in_cond = re.search(r'(?<![=!<>])=(?!=)', parens)
                 if assign_in_cond:
-                    errors.append({
-                        "line": line_num, "type": "AssignmentInCondition",
-                        "message": f"Line {line_num}: You used `=` (assignment) in a condition. Did you mean `==` (comparison)? A single `=` **assigns** a value, `==` **checks** if things are equal."
-                    })
+                    err_exists = any(e["line"] == line_num and e["type"] == "AssignmentInCondition" for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "AssignmentInCondition",
+                            "message": f"Line {line_num}: You used `=` (assignment) in a condition. Did you mean `==` (comparison)? A single `=` **assigns** a value, `==` **checks** if things are equal."
+                        })
 
     # ------------------------------------------------------------------
     # JS / TS
@@ -529,6 +542,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                 rest = all_args[fmt_end:].strip()
                                 if rest.startswith(","):
                                     value_args = [a.strip() for a in rest[1:].split(",")]
+                                    fixed_after = None
                                     for va in value_args:
                                         if va.startswith("&") and re.match(r'&[a-zA-Z_]', va):
                                             var_name = va[1:]
@@ -538,8 +552,11 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                             })
                                             close_q = line.index('"', line.index('"') + 1)
                                             before = line[:close_q + 1]
-                                            after = line[close_q + 1:]
-                                            fixes.setdefault(line_num, []).append(("replace", line, before + after.replace(va, var_name, 1)))
+                                            if fixed_after is None:
+                                                fixed_after = line[close_q + 1:]
+                                            fixed_after = fixed_after.replace(va, var_name, 1)
+                                    if fixed_after is not None:
+                                        fixes.setdefault(line_num, []).append(("replace", line, before + fixed_after))
 
                     # Check scanf("%d", var) — missing & where address is expected
                     if fn_name == "scanf":
@@ -551,6 +568,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                 rest = all_args[fmt_end:].strip()
                                 if rest.startswith(","):
                                     value_args = [a.strip() for a in rest[1:].split(",")]
+                                    fixed_after = None
                                     for va in value_args:
                                         va_clean = va.rstrip(")")
                                         if va_clean and not va_clean.startswith("&") and re.match(r'[a-zA-Z_]', va_clean):
@@ -563,8 +581,11 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                                 })
                                                 close_q = line.index('"', line.index('"') + 1)
                                                 before = line[:close_q + 1]
-                                                after = line[close_q + 1:]
-                                                fixes.setdefault(line_num, []).append(("replace", line, before + after.replace(va_clean, "&" + vn, 1)))
+                                                if fixed_after is None:
+                                                    fixed_after = line[close_q + 1:]
+                                                fixed_after = fixed_after.replace(va_clean, "&" + vn, 1)
+                                    if fixed_after is not None:
+                                        fixes.setdefault(line_num, []).append(("replace", line, before + fixed_after))
 
         for idx, line in enumerate(lines):
             line_num = idx + 1
@@ -622,10 +643,12 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     if parens:
                         assign_in_cond = re.search(r'(?<![=!<>])=(?!=)', parens)
                         if assign_in_cond:
-                            errors.append({
-                                "line": line_num, "type": "AssignmentInCondition",
-                                "message": f"Line {line_num}: You used `=` (assignment) in a condition. Did you mean `==` (comparison)? A single `=` **assigns** a value, `==` **checks** if values are equal."
-                            })
+                            err_exists = any(e["line"] == line_num and e["type"] == "AssignmentInCondition" for e in errors)
+                            if not err_exists:
+                                errors.append({
+                                    "line": line_num, "type": "AssignmentInCondition",
+                                    "message": f"Line {line_num}: You used `=` (assignment) in a condition. Did you mean `==` (comparison)? A single `=` **assigns** a value, `==` **checks** if values are equal."
+                                })
 
     # ------------------------------------------------------------------
     # SQL
