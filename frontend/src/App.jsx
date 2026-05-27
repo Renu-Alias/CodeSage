@@ -8,6 +8,7 @@ import Learn from './pages/Learn';
 import Payment from './pages/Payment';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import AccountSettings from './pages/AccountSettings';
 import OnboardingLearning from './pages/OnboardingLearning';
 import OnboardingLevel from './pages/OnboardingLevel';
 import './App.css';
@@ -26,7 +27,8 @@ function App() {
   });
 
   // Protected routes: redirect to login if not authenticated
-  const protectedRoutes = ['analyze', 'dashboard', 'learn', 'payment'];
+  const isLoggedIn = true; // REMOVE: stored in sessionStorage
+  const protectedRoutes = ['analyze', 'dashboard', 'learn', 'payment', 'account-settings'];
   const activePage = protectedRoutes.includes(currentPage) && !isLoggedIn ? 'login' : currentPage;
 
   const renderPage = () => {
@@ -54,6 +56,8 @@ function App() {
         return <OnboardingLearning setCurrentPage={setCurrentPage} setOnboardingData={setOnboardingData} />;
       case 'onboarding-level':
         return <OnboardingLevel setCurrentPage={setCurrentPage} setIsLoggedIn={setIsLoggedIn} onboardingData={onboardingData} setOnboardingData={setOnboardingData} />;
+      case 'account-settings':
+        return <AccountSettings setCurrentPage={setCurrentPage} />;
       default:
         return <Home setCurrentPage={setCurrentPage} setSampleCode={setSampleCode} setSelectedPlan={setSelectedPlan} isLoggedIn={isLoggedIn} />;
     }

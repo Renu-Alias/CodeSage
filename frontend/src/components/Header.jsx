@@ -75,7 +75,7 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
   };
 
   const settingsItems = [
-    { icon: <User size={16} />, label: "Account Settings", onClick: () => setCurrentPage('dashboard') },
+    { icon: <User size={16} />, label: "Account Settings", onClick: () => setCurrentPage('account-settings') },
     { icon: <Palette size={16} />, label: "Appearance", onClick: handleAppearance },
     { icon: <HelpCircle size={16} />, label: "Help & Support", onClick: handleHelp },
     { icon: <LogOut size={16} />, label: "Log Out", onClick: handleLogout },
