@@ -828,7 +828,9 @@
   grid-template-columns: 46px 1fr;
   flex-grow: 1;
   background-color: #12131C;
-  min-height: 380px;
+  min-height: 280px;
+  max-height: 420px;
+  overflow-y: auto;
 }
 
 .line-numbers-sidebar {
@@ -841,10 +843,11 @@
   text-align: center;
   user-select: none;
   border-right: 1px solid #1E202C;
+  overflow: hidden;
 }
 
 .line-number-cell {
-  height: 21px;
+  line-height: 1.625;
 }
 
 .code-textarea {
@@ -990,6 +993,7 @@
   padding: 24px;
   flex-grow: 1;
   overflow-y: auto;
+  overflow-x: auto;
   max-height: 400px;
   background-color: white;
 }
@@ -1084,11 +1088,14 @@
   line-height: 1.5;
   text-align: left;
   border: 1px solid #1E202C;
+  overflow-x: auto;
+  white-space: pre;
 }
 
 .diff-line-row {
   display: flex;
   gap: 12px;
+  min-width: fit-content;
 }
 
 .diff-marker {
@@ -1103,6 +1110,15 @@
   border-left: 2.5px solid #1EB880;
   margin-left: -16px;
   padding-left: 13.5px;
+}
+
+.diff-view {
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.diff-code-text {
+  white-space: pre;
 }
 
 .report-footer {
