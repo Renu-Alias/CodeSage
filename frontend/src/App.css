@@ -2486,3 +2486,24 @@
   margin-bottom: 32px;
 }
 
+/* Dark mode overrides — toggled via .dark-mode on body */
+body.dark-mode {
+  --primary: #7C78FF;
+  --bg: #0f0f1a;
+  --surface: #1a1a2e;
+  --border: #2a2a3e;
+  --text-dark: #e8e8f0;
+  --text-medium: #b0b0c0;
+}
+body.dark-mode .site-header { background: #161625; border-color: var(--border); }
+body.dark-mode .dropdown-menu { background: #1e1e32; }
+body.dark-mode .dropdown-header { background: #252540; }
+body.dark-mode .dropdown-item:hover { background: #2a2a44; }
+body.dark-mode .btn-primary { background: var(--primary); }
+body.dark-mode .btn-secondary { border-color: var(--border); color: var(--text-dark); }
+body.dark-mode .card { background: var(--surface); }
+body.dark-mode .auth-card { background: var(--surface); }
+body.dark-mode .auth-input { background: #161625; border-color: var(--border); color: var(--text-dark); }
+body.dark-mode .footer-links a { color: var(--text-medium); }
+
+

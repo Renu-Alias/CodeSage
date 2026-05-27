@@ -97,7 +97,7 @@ export default function OnboardingLearning({ setCurrentPage, setOnboardingData, 
             <a href="#terms" onClick={(e) => e.preventDefault()}>Terms</a>
             <a href="#privacy" onClick={(e) => e.preventDefault()}>Privacy</a>
             <a href="#support" onClick={(e) => e.preventDefault()}>Support</a>
-            <span>© 2024 CodeSage Academy. All rights reserved.</span>
+            <span>© 2026 CodeSage Academy. All rights reserved.</span>
           </div>
         </div>
       </footer>

@@ -53,7 +53,7 @@ function App() {
       case 'onboarding-learning':
         return <OnboardingLearning setCurrentPage={setCurrentPage} setOnboardingData={setOnboardingData} />;
       case 'onboarding-level':
-        return <OnboardingLevel setCurrentPage={setCurrentPage} onboardingData={onboardingData} setOnboardingData={setOnboardingData} />;
+        return <OnboardingLevel setCurrentPage={setCurrentPage} setIsLoggedIn={setIsLoggedIn} onboardingData={onboardingData} setOnboardingData={setOnboardingData} />;
       default:
         return <Home setCurrentPage={setCurrentPage} setSampleCode={setSampleCode} setSelectedPlan={setSelectedPlan} isLoggedIn={isLoggedIn} />;
     }

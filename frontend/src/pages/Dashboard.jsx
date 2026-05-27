@@ -116,6 +116,16 @@ export default function Dashboard({ setCurrentPage, setSampleCode }) {
     window.scrollTo(0, 0);
   };
 
+  const handleExport = () => {
+    const dataStr = JSON.stringify({ metrics, uploads, weaknessReport, badges, errorsOverTime }, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'codesage-history.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Filter uploads based on search and language dropdown
   const filteredUploads = uploads.filter(file => {
     const matchesSearch = file.filename.toLowerCase().includes(searchTerm.toLowerCase());
@@ -156,7 +166,7 @@ export default function Dashboard({ setCurrentPage, setSampleCode }) {
       {/* 1. TOP HEADER WITH EXPORT OPTION */}
       <div className="dashboard-header-row">
         <h2>Your dashboard</h2>
-        <button className="btn btn-secondary btn-export" onClick={() => alert("History exported successfully!")}>
+        <button className="btn btn-secondary btn-export" onClick={handleExport}>
           <Download size={14} /> Export history
         </button>
       </div>

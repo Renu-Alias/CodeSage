@@ -53,10 +53,24 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
     { icon: <MessageSquare size={16} />, title: "💡 Tip", desc: "Try the Dashboard to track your progress.", time: "5 days ago" },
   ];
 
+  const handleAppearance = () => {
+    document.body.classList.toggle('dark-mode');
+    setSettingsOpen(false);
+  };
+
+  const handleHelp = () => {
+    setCurrentPage('home');
+    setSettingsOpen(false);
+    setTimeout(() => {
+      const el = document.querySelector('.site-footer');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   const settingsItems = [
     { icon: <User size={16} />, label: "Account Settings", onClick: () => setCurrentPage('dashboard') },
-    { icon: <Palette size={16} />, label: "Appearance", onClick: () => {} },
-    { icon: <HelpCircle size={16} />, label: "Help & Support", onClick: () => {} },
+    { icon: <Palette size={16} />, label: "Appearance", onClick: handleAppearance },
+    { icon: <HelpCircle size={16} />, label: "Help & Support", onClick: handleHelp },
     { icon: <LogOut size={16} />, label: "Log Out", onClick: handleLogout },
   ];
 
@@ -115,7 +129,7 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
                         </div>
                       ))}
                     </div>
-                    <div className="dropdown-footer">Mark all as read</div>
+                    <div className="dropdown-footer" onClick={() => setNotifOpen(false)}>Mark all as read</div>
                   </div>
                 )}
               </div>

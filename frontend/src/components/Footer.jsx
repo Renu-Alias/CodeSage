@@ -19,11 +19,11 @@ export default function Footer({ setCurrentPage }) {
         </div>
         
         <div className="footer-links">
-          <a href="#terms" onClick={(e) => e.preventDefault()}>Terms of Service</a>
-          <a href="#privacy" onClick={(e) => e.preventDefault()}>Privacy Policy</a>
-          <a href="#cookie" onClick={(e) => e.preventDefault()}>Cookie Policy</a>
-          <a href="#docs" onClick={(e) => e.preventDefault()}>Documentation</a>
-          <a href="#support" onClick={(e) => e.preventDefault()}>Support</a>
+          <a href="#terms" onClick={(e) => { e.preventDefault(); setCurrentPage('home'); }}>Terms of Service</a>
+          <a href="#privacy" onClick={(e) => { e.preventDefault(); setCurrentPage('home'); }}>Privacy Policy</a>
+          <a href="#cookie" onClick={(e) => { e.preventDefault(); setCurrentPage('home'); }}>Cookie Policy</a>
+          <a href="#docs" onClick={(e) => { e.preventDefault(); setCurrentPage('home'); }}>Documentation</a>
+          <a href="#support" onClick={(e) => { e.preventDefault(); setCurrentPage('home'); }}>Support</a>
         </div>
       </div>
     </footer>
