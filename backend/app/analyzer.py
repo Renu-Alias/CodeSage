@@ -443,6 +443,54 @@ def _get_error_explanation(err, code_lines, lang):
             "Make sure you have a base case that stops the recursion, like `if (n <= 1): return n`."
         )
 
+    if "DivisionByZero" in etype:
+        return explain(
+            "Your code divides by zero, which is mathematically undefined and crashes your program. The CPU cannot compute how many times nothing fits into something.",
+            "Check that the divisor is not zero before dividing: `if (b != 0) { result = a / b; }`"
+        )
+
+    if "InfiniteRecursion" in etype:
+        return explain(
+            "A function calls itself. If there's no base case to stop the recursion, it will keep calling itself until the program runs out of stack memory and crashes with a stack overflow.",
+            "Add a base case — a condition that stops the recursion, like `if (n == 0) return;` before the recursive call."
+        )
+
+    if "DanglingPointer" in etype:
+        return explain(
+            "A pointer holds the address of a local variable that has gone out of scope. The memory it points to has been reclaimed, so using it is undefined behavior. Like holding a ticket to a show that already ended.",
+            "Ensure the pointed-to variable still exists when the pointer is used, or allocate the memory on the heap with malloc()."
+        )
+
+    if "StringLiteralModification" in etype:
+        return explain(
+            "You're trying to modify a string literal. String literals are stored in read-only memory in C/C++. Writing to them crashes your program. Like trying to edit text that's carved in stone.",
+            "Use a mutable array instead: `char str[] = \"hello\";` — this creates a copy on the stack that you can safely modify."
+        )
+
+    if "FormatMismatch" in etype:
+        return explain(
+            "A printf format specifier doesn't match the argument type. `%s` expects a string (char*), but you passed a number. This causes the program to interpret the number as a memory address, which crashes or prints garbage.",
+            "Use the correct format specifier: `%d` for integers, `%s` for strings, `%f` for floats."
+        )
+
+    if "ShiftOverflow" in etype:
+        return explain(
+            "You're shifting a value by more bits than the type can hold. For a 32-bit int, shifting by 32 or more is undefined behavior — the result is unpredictable.",
+            "Make sure the shift amount is less than the bit width of the type (e.g., less than 32 for an int)."
+        )
+
+    if "SequencePointViolation" in etype:
+        return explain(
+            "You modified a variable multiple times between two sequence points. The C/C++ standard doesn't define what happens — different compilers give different results. Like changing the rules of chess mid-game.",
+            "Break the expression into separate statements: don't use ++ or -- on the same variable more than once in the same expression."
+        )
+
+    if "MissingNullCheck" in etype:
+        return explain(
+            "Memory was allocated with malloc() but the return value wasn't checked for NULL. If memory allocation fails, malloc() returns NULL and using the pointer crashes your program.",
+            "Always check the result: `if (ptr == NULL) { /* handle error */ }`"
+        )
+
     return f"Line {line}: {msg}"
 
 # ---------------------------------------------------------------------------
@@ -1091,10 +1139,16 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                 brace_depth = 0
                 current_fn = None
                 fn_start = {}
+                defined_constants = {}  # #define NAME VALUE tracking
 
                 for idx, line in enumerate(lines):
                     line_num = idx + 1
                     stripped = line.strip()
+
+                    # Track #define numeric constants
+                    define_m = re.match(r'#\s*define\s+(\w+)\s+(\d+)', stripped)
+                    if define_m:
+                        defined_constants[define_m.group(1)] = int(define_m.group(2))
 
                     # Track function definitions
                     fn_def = re.match(r'^(?:\w+\s+)*(\*?\s*\w+)\s*\([^)]*\)\s*\{?\s*(?://.*)?$', stripped)
@@ -1158,10 +1212,12 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         if vname not in stack_vars:
                             malloc_vars[vname] = (line_num, stripped)
 
-                    # Detect free(ptr)
+                    # Detect free(ptr) — don't add stack vars to freed_vars
                     free_match = re.search(r'\bfree\s*\(\s*(\w+)\s*\)', stripped)
                     if free_match:
-                        freed_vars.add(free_match.group(1))
+                        vname = free_match.group(1)
+                        if vname not in stack_vars:
+                            freed_vars.add(vname)
 
                 # Pass 2: detect memory errors
                 for idx, line in enumerate(lines):
@@ -1201,28 +1257,26 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                     "message": f"Line {line_num}: Returning the address of `{vname}` (a local/stack variable declared on line {stack_vars[vname]}). When the function exits, its stack memory is reclaimed. The returned pointer becomes invalid — like giving someone your apartment address after you've moved out."
                                 })
 
-                    # --- Use-after-free ---
+                    # --- Use-after-free (check against FIRST free, not last) ---
                     for freed_name in freed_vars:
                         code_only = _strip_c_line(line)
                         if freed_name in code_only and 'free' not in code_only:
-                            # Check if this usage is after the free call
                             free_occurrences = [li for li, l in enumerate(lines) if re.search(r'\bfree\s*\(\s*' + re.escape(freed_name) + r'\s*\)', l)]
                             if free_occurrences:
-                                last_free_line = free_occurrences[-1] + 1
-                                if line_num > last_free_line:
+                                first_free_line = free_occurrences[0] + 1
+                                if line_num > first_free_line:
                                     if re.search(r'\b' + re.escape(freed_name) + r'\b', code_only):
                                         err_exists = any(e["line"] == line_num and e["type"] == "UseAfterFree" and freed_name in e["message"] for e in errors)
                                         if not err_exists:
                                             errors.append({
                                                 "line": line_num, "type": "UseAfterFree",
-                                                "message": f"Line {line_num}: `{freed_name}` was freed on line {last_free_line} but is still being used here. Accessing memory after freeing it is undefined behavior — like trying to read a book you already returned to the library."
+                                                "message": f"Line {line_num}: `{freed_name}` was freed on line {first_free_line} but is still being used here. Accessing memory after freeing it is undefined behavior — like trying to read a book you already returned to the library."
                                             })
 
                 # --- Off-by-one / buffer overflow ---
                 # Track malloc sizes and loop bounds
                 malloc_sizes = {}  # ptr_name -> max_allocated_size (as int)
                 for vname, (ln, text) in malloc_vars.items():
-                    # Extract size from malloc(n * sizeof(type)) — handle nested parens
                     paren_depth = 0
                     start = text.find('malloc(')
                     if start >= 0:
@@ -1236,10 +1290,16 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                     break
                                 paren_depth -= 1
                         size_expr = text[start:end]
-                        # Try to evaluate simple expressions like "sizeof(int) * 4" or "4"
+                        # Substitute #define constants
+                        for const_name, const_val in defined_constants.items():
+                            size_expr = size_expr.replace(const_name, str(const_val))
                         simple = re.match(r'(?:sizeof\s*\(\s*[^)]+\s*\)\s*\*\s*)?(\d+)', size_expr)
                         if simple:
                             malloc_sizes[vname] = int(simple.group(1))
+                        # Fallback: try evaluating simple arithmetic like sizeof(int)*5 -> 5
+                        alt = re.search(r'\*\s*(\d+)\s*$', size_expr)
+                        if alt:
+                            malloc_sizes[vname] = int(alt.group(1))
 
                 for idx, line in enumerate(lines):
                     line_num = idx + 1
@@ -1263,32 +1323,41 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     for vname, (ln, text) in malloc_vars.items():
                         if vname in malloc_sizes:
                             max_idx = malloc_sizes[vname] - 1
-                            # Check if this line writes to vname[i] where i >= max_idx
-                            write_to = re.search(r'\b' + re.escape(vname) + r'\s*\[\s*(\w+)\s*\]\s*=', stripped)
-                            if write_to:
-                                idx_var = write_to.group(1)
-                                # If the index is a literal number that's too large
-                                if idx_var.isdigit() and int(idx_var) > max_idx:
-                                    err_exists = any(e["line"] == line_num and e["type"] == "BufferOverflow" for e in errors)
-                                    if not err_exists:
-                                        errors.append({
-                                            "line": line_num, "type": "BufferOverflow",
-                                            "message": f"Line {line_num}: Writing to `{vname}[{idx_var}]` but `{vname}` was allocated with only {malloc_sizes[vname]} element(s) (line {ln}). This writes past the end of the buffer — like trying to park 5 cars in a 4-car garage."
-                                        })
-                                # Check if there's a loop before that iterates beyond the size
-                                if not idx_var.isdigit():
-                                    for pi in range(max(0, idx - 5), idx):
-                                        pl = lines[pi].strip()
-                                        loop_bound = re.search(r'for\s*\(\s*(?:\w+\s+)?' + re.escape(idx_var) + r'\s*=\s*\d+\s*;\s*' + re.escape(idx_var) + r'\s*<\s*(\d+)', pl)
-                                        if loop_bound:
-                                            loop_max = int(loop_bound.group(1))
-                                            if loop_max - 1 > max_idx:
-                                                err_exists = any(e["line"] == line_num and e["type"] == "BufferOverflow" for e in errors)
-                                                if not err_exists:
-                                                    errors.append({
-                                                        "line": line_num, "type": "BufferOverflow",
-                                                        "message": f"Line {line_num}: Writing to `{vname}[{idx_var}]` but the loop iterates up to {loop_max - 1}, while `{vname}` only has {malloc_sizes[vname]} element(s) (allocated on line {ln}). This is a heap buffer overflow."
-                                                    })
+                        else:
+                            max_idx = -1  # unknown size — flag loop writes > reasonable threshold
+                        write_to = re.search(r'\b' + re.escape(vname) + r'\s*\[\s*(\w+)\s*\]\s*=', stripped)
+                        if write_to:
+                            idx_var = write_to.group(1)
+                            # If the index is a literal number that's too large
+                            if idx_var.isdigit() and int(idx_var) > max_idx:
+                                err_exists = any(e["line"] == line_num and e["type"] == "BufferOverflow" for e in errors)
+                                if not err_exists:
+                                    errors.append({
+                                        "line": line_num, "type": "BufferOverflow",
+                                        "message": f"Line {line_num}: Writing to `{vname}[{idx_var}]` but `{vname}` was allocated with only {malloc_sizes[vname]} element(s) (line {ln}). This writes past the end of the buffer — like trying to park 5 cars in a 4-car garage."
+                                    })
+                            # Check if there's a loop before that iterates beyond the size
+                            if not idx_var.isdigit():
+                                for pi in range(max(0, idx - 8), idx):
+                                    pl = lines[pi].strip()
+                                    loop_bound = re.search(r'for\s*\(\s*(?:\w+\s+)?' + re.escape(idx_var) + r'\s*=\s*\d+\s*;\s*' + re.escape(idx_var) + r'\s*<\s*(\d+)', pl)
+                                    if loop_bound:
+                                        loop_max = int(loop_bound.group(1))
+                                        # If malloc size is unknown and loop bound > 8, flag it
+                                        if max_idx < 0 and loop_max > 8:
+                                            err_exists = any(e["line"] == line_num and e["type"] == "BufferOverflow" for e in errors)
+                                            if not err_exists:
+                                                errors.append({
+                                                    "line": line_num, "type": "BufferOverflow",
+                                                    "message": f"Line {line_num}: Loop iterates up to index {loop_max - 1} but `{vname}` was allocated with an unknown size on line {ln}. This may overflow the buffer."
+                                                })
+                                        elif max_idx >= 0 and loop_max - 1 > max_idx:
+                                            err_exists = any(e["line"] == line_num and e["type"] == "BufferOverflow" for e in errors)
+                                            if not err_exists:
+                                                errors.append({
+                                                    "line": line_num, "type": "BufferOverflow",
+                                                    "message": f"Line {line_num}: Writing to `{vname}[{idx_var}]` but the loop iterates up to {loop_max - 1}, while `{vname}` only has {malloc_sizes[vname]} element(s) (allocated on line {ln}). This is a heap buffer overflow."
+                                                })
 
     # ------------------------------------------------------------------
     # SQL
@@ -1401,6 +1470,9 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         freed_twice = set()     # already counted for double free
         alloc_lines = {}        # ptr -> line of malloc
         passed_to_free = {}     # ptr -> count of free calls
+        dangling_ptrs = {}      # ptr -> (line_assigned, assigned_to_var)
+        var_types = {}          # var_name -> "signed" or "unsigned"
+        overflow_candidates = set()  # var names assigned near-INT_MAX values
 
         for idx, line in enumerate(lines):
             line_num = idx + 1
@@ -1411,6 +1483,33 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             null_as = re.search(r'(\w+)\s*=\s*(NULL|nullptr|0)\s*;', stripped)
             if null_as:
                 nulled_ptrs.add(null_as.group(1))
+
+            # Track dangling pointer: ptr = &localvar
+            dangling_as = re.search(r'(\w+)\s*=\s*&(\w+)', stripped)
+            if dangling_as:
+                ptr_name = dangling_as.group(1)
+                local_name = dangling_as.group(2)
+                if ptr_name not in malloc_vars and ptr_name not in fn_params:
+                    dangling_ptrs[ptr_name] = (line_num, local_name)
+
+            # Track variable types for signed/unsigned comparison detection
+            unsigned_decl = re.match(r'^\s*(?:unsigned|size_t|uint\d+_t)\b', stripped)
+            if unsigned_decl:
+                # Extract the actual variable name (the last identifier after type keywords)
+                var_m = re.search(r'(?:unsigned|size_t|uint\d+_t)\s+(?:\w+\s+)*(\w+)\s*[=;]', stripped)
+                if var_m:
+                    var_types[var_m.group(1)] = "unsigned"
+            int_decl = re.match(r'^\s*(?:signed\s+)?(?:int|long|short|char)\s+(\w+)', stripped)
+            if int_decl:
+                vn = int_decl.group(1)
+                # Don't overwrite if already tracked as unsigned
+                if vn not in var_types:
+                    var_types[vn] = "signed"
+
+            # Track vars assigned near-INT_MAX for overflow detection
+            overflow_assign = re.search(r'(\w+)\s*=\s*214748364\d', stripped)
+            if overflow_assign:
+                overflow_candidates.add(overflow_assign.group(1))
 
             # Track pointer declaration without init (wild pointer)
             wild = re.match(r'^\s*(?:\w+\s+)*\*+\s*(\w+)\s*;\s*$', stripped)
@@ -1449,7 +1548,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             stripped = line.strip()
             if stripped.startswith("//") or stripped.startswith("/*"): continue
 
-            # Null pointer dereference
+            # Null pointer dereference via -> or *
             null_used = re.search(r'(?<!\w)(\w+)\s*->', stripped)
             if null_used:
                 vname = null_used.group(1)
@@ -1460,16 +1559,45 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                             "line": line_num, "type": "NullPointerDereference",
                             "message": f"Line {line_num}: `{vname}` was set to NULL earlier but is being dereferenced with `->`. Dereferencing a NULL pointer crashes your program — like trying to open a door that doesn't exist."
                         })
+            # *ptr = val or *ptr; where ptr is NULL
+            null_star = re.search(r'\*(\w+)\s*[=;]', stripped)
+            if null_star:
+                vname = null_star.group(1)
+                if vname in nulled_ptrs:
+                    first_word = stripped.split()[0] if stripped.split() else ''
+                    type_kws = {'int','char','float','double','long','short','unsigned','void','const','static','volatile','struct','signed'}
+                    if first_word not in type_kws:
+                        err_exists = any(e["line"] == line_num and "NullPointer" in e["type"] for e in errors)
+                        if not err_exists:
+                            errors.append({
+                                "line": line_num, "type": "NullPointerDereference",
+                                "message": f"Line {line_num}: `{vname}` was set to NULL earlier but is being dereferenced here. Writing to or reading from a NULL pointer crashes your program — like trying to open a door that doesn't exist."
+                            })
 
             # Wild pointer (using uninitialized pointer)
             for wp in uninit_ptrs:
                 if re.search(r'\b' + re.escape(wp) + r'\s*->|\*' + re.escape(wp) + r'\b', stripped):
-                    err_exists = any(e["line"] == line_num and "WildPointer" in e["type"] for e in errors)
-                    if not err_exists:
-                        errors.append({
-                            "line": line_num, "type": "WildPointer",
-                            "message": f"Line {line_num}: `{wp}` was declared but not initialized. Using an uninitialized pointer is undefined behavior — like driving a car without knowing where the steering wheel is."
-                        })
+                    # Skip declarations (int *ptr;) — they're not dereferences
+                    first_word = stripped.split()[0] if stripped.split() else ''
+                    type_kws = {'int','char','float','double','long','short','unsigned','void','const','static','volatile','struct','signed'}
+                    if first_word in type_kws:
+                        continue
+                    # Check if it's actually a dangling pointer (assigned local address)
+                    if wp in dangling_ptrs:
+                        dline, dvar = dangling_ptrs[wp]
+                        err_exists = any(e["line"] == line_num and "DanglingPointer" in e["type"] for e in errors)
+                        if not err_exists:
+                            errors.append({
+                                "line": line_num, "type": "DanglingPointer",
+                                "message": f"Line {line_num}: `{wp}` holds the address of local variable `{dvar}` which may have gone out of scope. Using a dangling pointer is undefined behavior — like reading a letter after the mailbox was removed."
+                            })
+                    else:
+                        err_exists = any(e["line"] == line_num and "WildPointer" in e["type"] for e in errors)
+                        if not err_exists:
+                            errors.append({
+                                "line": line_num, "type": "WildPointer",
+                                "message": f"Line {line_num}: `{wp}` was declared but not initialized. Using an uninitialized pointer is undefined behavior — like driving a car without knowing where the steering wheel is."
+                            })
 
             # Buffer underflow (negative index)
             underflow = re.search(r'(\w+)\s*\[\s*-\s*\d+\s*\]', stripped)
@@ -1485,9 +1613,10 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             sus = re.search(r'(\w+)\s*(<|>|<=|>=)\s*(\w+)', stripped)
             if sus:
                 v1, op, v2 = sus.group(1), sus.group(2), sus.group(3)
-                # Simple heuristic: if one looks like unsigned type and other signed
                 unsigned_kw = {"unsigned", "size_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t"}
-                if v1 in unsigned_kw or v2 in unsigned_kw:
+                is_unsigned = v1 in unsigned_kw or v2 in unsigned_kw or var_types.get(v1) == "unsigned" or var_types.get(v2) == "unsigned"
+                is_signed = var_types.get(v1) == "signed" or var_types.get(v2) == "signed"
+                if is_unsigned and is_signed:
                     err_exists = any(e["line"] == line_num and "SignedUnsigned" in e["type"] for e in errors)
                     if not err_exists:
                         errors.append({
@@ -1506,6 +1635,66 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                             "line": line_num, "type": "ModuloByZero",
                             "message": f"Line {line_num}: `{divisor}` could be zero. Modulo by zero crashes your program — like asking 'how many times does 0 fit into 10?' There's no answer!"
                         })
+
+            # Division / modulo by literal zero
+            div_zero = re.search(r'(?<!\w)(\w+)\s*/\s*0\b', stripped)
+            if div_zero:
+                err_exists = any(e["line"] == line_num and ("DivByZero" in e["type"] or "DivisionByZero" in e["type"]) for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "DivisionByZero",
+                        "message": f"Line {line_num}: Division by literal zero. Dividing by zero crashes your program — like asking 'how many groups of nothing can you make?' It has no answer."
+                    })
+
+            # Detect function calls where a parameter is literal 0 and may be used as divisor
+            div_call = re.search(r'(\w+)\s*\(\s*[^)]*\b(\w+)\s*,\s*0\s*\)', stripped)
+            if div_call:
+                err_exists = any(e["line"] == line_num and ("DivByZero" in e["type"] or "DivisionByZero" in e["type"]) for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "DivisionByZero",
+                        "message": f"Line {line_num}: Calling `{div_call.group(1)}()` with 0 as an argument. If the function divides by this parameter, it will crash."
+                    })
+
+            # Detect division by function parameter in function body
+            fn_div = re.search(r'/(\w+)\b', stripped)
+            if fn_div:
+                divisor_var = fn_div.group(1)
+                if divisor_var in fn_params:
+                    err_exists = any(e["line"] == line_num and ("DivByZero" in e["type"] or "DivisionByZero" in e["type"]) for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "DivisionByZero",
+                            "message": f"Line {line_num}: Dividing by `{divisor_var}`, which is a function parameter. If someone passes 0, this crashes. Add a zero check before dividing."
+                        })
+
+            # Integer overflow: track variable increment on overflow candidates
+            if overflow_candidates:
+                overflow_use = re.search(r'(\w+)\s*=\s*\1\s*\+\s*1', stripped)
+                if overflow_use and overflow_use.group(1) in overflow_candidates:
+                    err_exists = any(e["line"] == line_num and "IntegerOverflow" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "IntegerOverflow",
+                            "message": f"Line {line_num}: `{overflow_use.group(1)}` was assigned a near-INT_MAX value earlier. Adding 1 causes signed integer overflow — undefined behavior."
+                        })
+
+            # if (0) dead code: code inside if (0) { ... } is never reached
+            if re.match(r'^\s*if\s*\(\s*0\s*\)', stripped):
+                # Flag the next non-empty, non-brace line as dead code
+                for ni in range(idx + 1, min(idx + 5, len(lines))):
+                    nxt = lines[ni].strip()
+                    if not nxt or nxt == '{' or nxt.startswith('//') or nxt.startswith('/*'):
+                        continue
+                    if nxt == '}':
+                        break
+                    err_exists = any(e["line"] == ni + 1 and "DeadCode" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": ni + 1, "type": "DeadCode",
+                            "message": f"Line {ni + 1}: This code is inside `if (0)` on line {line_num} and will never execute. The condition is always false."
+                        })
+                    break
 
             # Stack overflow: detect very large local arrays
             large_stack = re.match(r'^\s*(?:\w+\s+)+(\w+)\s*\[\s*(\d+)\s*\]\s*;', stripped)
@@ -1554,6 +1743,104 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                             "message": f"Line {ni + 1}: Code after `return`/`break`/`continue` on line {line_num} will never run. Like writing instructions after a full stop — nobody reads them."
                         })
                     break  # only flag the first line after
+
+            # Integer overflow detection
+            int_max_str = '2147483647'  # INT_MAX
+            if int_max_str in stripped:
+                err_exists = any(e["line"] == line_num and "IntegerOverflow" in e["type"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "IntegerOverflow",
+                        "message": f"Line {line_num}: INT_MAX ({int_max_str}) used. Adding to or past this value causes signed integer overflow — undefined behavior."
+                    })
+
+            # Buffer overflow via strcpy with unsafe destination
+            strcpy_m = re.search(r'\bstrcpy\s*\(\s*(\w+)', stripped)
+            if strcpy_m:
+                dest = strcpy_m.group(1)
+                if dest in stack_vars:
+                    err_exists = any(e["line"] == line_num and "BufferOverflow" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "BufferOverflow",
+                            "message": f"Line {line_num}: `strcpy()` writes to `{dest}` without bounds checking. If the source string is longer than the destination buffer, it overflows — like pouring a gallon of water into a pint glass."
+                        })
+
+            # Infinite recursion (function calling itself)
+            for fn_name, (fstart, fend) in func_bodies.items():
+                if fstart and line_num > fstart and (fend is None or line_num < fend):
+                    if re.search(r'\b' + re.escape(fn_name) + r'\s*\(', stripped):
+                        err_exists = any(e["line"] == line_num and "InfiniteRecursion" in e["type"] for e in errors)
+                        if not err_exists:
+                            errors.append({
+                                "line": line_num, "type": "InfiniteRecursion",
+                                "message": f"Line {line_num}: `{fn_name}()` calls itself inside its own body. Without a base case, this causes infinite recursion and a stack overflow — like a mirror facing another mirror, infinitely."
+                            })
+
+            # String literal modification
+            str_mod = re.search(r'(\w+)\s*\[\s*\d+\s*\]\s*=\s*[\'"]', stripped)
+            if str_mod:
+                vname = str_mod.group(1)
+                # Check if the variable was assigned a string literal
+                for pi in range(max(0, idx - 10), idx):
+                    pl = lines[pi].strip()
+                    if re.match(r'^.*\b' + re.escape(vname) + r'\s*=\s*"', pl) and not re.search(r'malloc|calloc|realloc|new|\[', pl):
+                        err_exists = any(e["line"] == line_num and "StringLiteralModification" in e["type"] for e in errors)
+                        if not err_exists:
+                            errors.append({
+                                "line": line_num, "type": "StringLiteralModification",
+                                "message": f"Line {line_num}: `{vname}` points to a string literal (defined earlier). Modifying a string literal is undefined behavior in C — like trying to erase a word in a printed book."
+                            })
+                        break
+
+            # Incorrect format specifier: %s with non-string (int) argument
+            format_m = re.search(r'printf\s*\([^)]*%s[^)]*,\s*(\d+)', stripped)
+            if format_m:
+                err_exists = any(e["line"] == line_num and "FormatMismatch" in e["type"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "FormatMismatch",
+                        "message": f"Line {line_num}: `%s` format specifier expects a string (char*), but the argument is the number {format_m.group(1)}. This will crash or print garbage."
+                    })
+
+            # Undefined shift / shift overflow: 1 << N where N >= bit width
+            shift_m = re.search(r'1\s*<<\s*(\d+)', stripped)
+            if shift_m:
+                shift_amt = int(shift_m.group(1))
+                if shift_amt >= 32:
+                    err_exists = any(e["line"] == line_num and "ShiftOverflow" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "ShiftOverflow",
+                            "message": f"Line {line_num}: Shifting 1 left by {shift_amt} bits is undefined behavior when the shift exceeds or equals the type width (typically 32 for int)."
+                        })
+
+            # Sequence point violation: variable modified twice between sequence points
+            seq_m = re.search(r'(\w+)\s*=\s*\w+\+\+\s*\+\+\s*\w+|\w+\+\+\s*\+\s*\+\+\w+', stripped)
+            if seq_m or re.search(r'=\s*\w+\+\+\s*\+\s*\+\+\w+', stripped):
+                err_exists = any(e["line"] == line_num and "SequencePointViolation" in e["type"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "SequencePointViolation",
+                        "message": f"Line {line_num}: A variable is modified multiple times between sequence points. This is undefined behavior — the result can vary between compilers."
+                    })
+
+            # Missing NULL check after malloc
+            if re.search(r'(\w+)\s*=\s*(?:\(\s*\w+\s*\*?\s*\)\s*)?(malloc|calloc|realloc)\s*\(', stripped):
+                alloc_var = re.search(r'(\w+)\s*=', stripped).group(1)
+                check_found = False
+                for ci in range(idx + 1, min(idx + 6, len(lines))):
+                    cl = lines[ci].strip()
+                    if re.search(r'\b' + re.escape(alloc_var) + r'\s*==\s*(NULL|0)\b', cl) or re.search(r'!\s*' + re.escape(alloc_var), cl):
+                        check_found = True
+                        break
+                if not check_found:
+                    err_exists = any(e["line"] == line_num and "MissingNullCheck" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "MissingNullCheck",
+                            "message": f"Line {line_num}: `{alloc_var}` is allocated with malloc() but the return value is not checked for NULL. malloc() can fail and return NULL — always check if the result is NULL."
+                        })
 
     # ------------------------------------------------------------------
     # PYTHON MISSING RETURN, SHADOWING, ACCIDENTAL RECURSION, DEAD CODE
@@ -1724,7 +2011,10 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             stripped = line.strip()
             if not stripped or stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*"):
                 continue
-            words = re.findall(r'\b([a-zA-Z_]\w*)\b', stripped)
+            # Strip string contents before keyword matching to avoid false positives
+            no_strings = re.sub(r'"[^"]*"', ' ', stripped)
+            no_strings = re.sub(r"'[^']*'", ' ', no_strings)
+            words = re.findall(r'\b([a-zA-Z_]\w*)\b', no_strings)
             for w in words:
                 if w in kw_set:
                     continue
@@ -1832,6 +2122,47 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         })
 
     # ------------------------------------------------------------------
+    # AUTO-FIX — generate fixes for common C errors
+    # ------------------------------------------------------------------
+    for err in errors:
+        ln = err["line"]
+        idx = ln - 1
+        if idx < 0 or idx >= len(lines):
+            continue
+        orig = lines[idx]
+        err_type = err["type"]
+        if err_type == "AssignmentInCondition":
+            # Replace = with == in if/while conditions
+            fixed = re.sub(r'(\b(?:if|while|for)\s*\()([^)]*?)(\w+)\s*=\s*(\w+)', lambda m: m.group(1) + m.group(2) + m.group(3) + ' == ' + m.group(4), orig)
+            if fixed != orig:
+                fixes.setdefault(ln, []).append(("replace", orig, fixed))
+        elif err_type == "OffByOne":
+            # Replace <= with < (common off-by-one loop fix)
+            fixed = re.sub(r'(<=)', '<', orig, count=1)
+            if fixed != orig:
+                fixes.setdefault(ln, []).append(("replace", orig, fixed))
+        elif err_type == "MissingSemicolon":
+            stripped = orig.rstrip()
+            if not stripped.endswith(";"):
+                fixes.setdefault(ln, []).append(("replace", orig, stripped + ";"))
+        elif err_type == "DivisionByZero":
+            # Replace literal 0 divisor with a safe value
+            fixed = re.sub(r'/\s*0\b', '/ 1', orig)
+            if fixed != orig:
+                fixes.setdefault(ln, []).append(("replace", orig, fixed))
+        elif err_type == "ReturnLocalAddress":
+            # Replace return &local with return NULL
+            fixed = re.sub(r'return\s+&\w+', 'return NULL', orig)
+            if fixed != orig:
+                fixes.setdefault(ln, []).append(("replace", orig, fixed))
+        elif err_type == "MissingNullCheck":
+            # Wrap the malloc result in a NULL check
+            mal = re.search(r'(\w+)\s*=\s*malloc\(', orig)
+            if mal:
+                var_name = mal.group(1)
+                fixes.setdefault(ln, []).append(("append", f"if (!{var_name}) return NULL;    // added NULL check"))
+
+    # ------------------------------------------------------------------
     # FIXED CODE — apply all collected fixes
     # ------------------------------------------------------------------
     fixed_lines = list(prepend_lines)
@@ -1844,7 +2175,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     old_s, new_s = fix[1], fix[2]
                     line = line.replace(old_s, new_s, 1)
                 elif fix_type == "append":
-                    line = line.rstrip() + fix[1]
+                    line = line.rstrip() + "  // " + fix[1]
                 elif fix_type == "wrap":
                     line = fix[2]
         fixed_lines.append(line)

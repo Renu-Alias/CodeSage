@@ -1,0 +1,127 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define SIZE 5
+
+int global = 10;
+
+char *getMessage() {
+    char buffer[20];
+
+    strcpy(buffer, "This string is definitely longer than twenty characters");
+
+    return buffer; // Returning local address
+}
+
+int divide(int a, int b) {
+    return a / b; // Possible divide by zero
+}
+
+void recursive() {
+    recursive(); // Infinite recursion
+}
+
+int main() {
+
+    int arr[SIZE];
+    int *ptr = malloc(sizeof(int) * SIZE);
+    int *nullPtr = NULL;
+
+    int uninitialized;
+    int x = 2147483647;
+
+    // Uninitialized variable usage
+    printf("%d\n", uninitialized);
+
+    // Integer overflow
+    x = x + 1;
+
+    // Null pointer dereference
+    *nullPtr = 5;
+
+    // Off-by-one + buffer overflow
+    for (int i = 0; i <= SIZE; i++) {
+        arr[i] = i;
+    }
+
+    // Heap buffer overflow
+    for (int i = 0; i < 10; i++) {
+        ptr[i] = i;
+    }
+
+    // Use-after-free
+    free(ptr);
+    ptr[0] = 100;
+
+    // Double free
+    free(ptr);
+
+    // Invalid free
+    free(arr);
+
+    // Assignment in condition
+    if (global = 5) {
+        printf("Assignment instead of comparison\n");
+    }
+
+    // Signed/unsigned comparison issue
+    unsigned int u = 10;
+    int n = -1;
+
+    if (n < u) {
+        printf("Unexpected comparison\n");
+    }
+
+    // Division by zero
+    int result = divide(10, 0);
+
+    // Dead code
+    if (0) {
+        printf("Never executes\n");
+    }
+
+    // Memory leak
+    int *leak = malloc(sizeof(int) * 100);
+
+    // Dangling pointer
+    int *dangling;
+    {
+        int temp = 5;
+        dangling = &temp;
+    }
+
+    printf("%d\n", *dangling);
+
+    // String literal modification
+    char *str = "hello";
+    str[0] = 'H';
+
+    // Incorrect format specifier
+    printf("%s\n", 100);
+
+    // Array underflow
+    arr[-1] = 10;
+
+    // Shift overflow
+    int y = 1 << 40;
+
+    // Undefined behavior
+    int z = 5;
+    z = z++ + ++z;
+
+    // Infinite recursion
+    recursive();
+
+    // Missing NULL check after malloc
+    int *big = malloc(1000000000000);
+
+    big[0] = 1;
+
+    // Returning stack memory
+    char *msg = getMessage();
+
+    printf("%s\n", msg);
+
+    return 0;
+}
