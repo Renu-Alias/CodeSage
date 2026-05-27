@@ -289,8 +289,14 @@ export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan, i
               
               <ul className="tier-features">
                 <li>✓ Unlimited snippets</li>
-                <li>✓ Deep logic analysis</li>
+                <li>✓ Deep logic & complexity analysis</li>
                 <li>✓ Priority AI processing</li>
+                <li>✓ Auto-fix suggestions</li>
+                <li>✓ Multi-file batch analysis</li>
+                <li>✓ Advanced performance metrics</li>
+                <li>✓ Export detailed reports (PDF/JSON)</li>
+                <li>✓ Ad-free experience</li>
+                <li>✓ Email support with 24h response</li>
               </ul>
               
               <button className="btn btn-primary pricing-btn" onClick={() => { setSelectedPlan('pro'); setCurrentPage(isLoggedIn ? 'payment' : 'login'); }}>
