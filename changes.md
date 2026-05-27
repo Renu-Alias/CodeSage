@@ -177,6 +177,7 @@ Updated `README.md` to highlight CodeSage's beginner-friendly explanations:
 
 ## 7. Diverse Error Detection Test Suite
 
+### Initial round (30 tests)
 Ran 30 comprehensive tests covering all supported languages with three error types (syntax, logical, runtime):
 
 | Language | Tests | What was tested |
@@ -190,3 +191,59 @@ Ran 30 comprehensive tests covering all supported languages with three error typ
 | Demos | 2 | Exact-match hardcoded demos (calculate_average, loop_price) |
 
 **Result: 30/30 tests passed.**
+
+### Expanded round (52 tests) — added edge cases, negative tests, fix verification
+Added coverage for:
+- **Python edge cases**: `elif`/`while`/`class`/`try`/`with` missing colons, `=` in `elif`/`while`, name typo with multiple defined vars, division WITH guard (surrounding `if` check now works), builtins not flagged
+- **JS edge cases**: valid code silence, multiple `==` per line, `===` not flagged, `parseInt` with radix not flagged, `var` + semicolon combo
+- **C/C++ edge cases**: `while` with `=`, unknown headers (>2 Levenshtein distance) show suggestion not error, C++ `iostream` isolated from C mode, multi-`&` removal in one printf, multi-error per line (semicolon + `&`)
+- **SQL edge cases**: `UPDATE`/`DELETE` with `WHERE` not flagged, `IS NULL` not flagged
+- **HTML/CSS edge cases**: doctype not flagged, closed brace not flagged, proper units not flagged
+- **Negative tests**: all 7 languages tested with valid code → zero false positives
+- **Explanation verification**: beginner analogies confirmed present for `=`, `printf(&x)`, `void main`
+- **Intermediate mode**: all detections work in both beginner and intermediate modes
+
+**Result: 52/52 tests passed.**
+
+---
+
+## 8. Bugs Fixed During Testing
+
+### 8.1 `printf("%d %d", &a, &b)` — second `&` not removed
+**File**: `backend/app/analyzer.py` (printf fix section)
+**Issue**: Each `&` arg generated a separate `("replace", original_line, new_line)` fix. After the first fix replaced the line, the second fix couldn't find `original_line` anymore — silently did nothing. Only the first `&a` was removed; `&b` stayed.
+**Fix**: Accumulate all arg replacements into a single `fixed_after` variable, then create ONE fix per printf/scanf line.
+
+### 8.2 Division guard flagged even when `if count != 0:` guard existed above
+**File**: `backend/app/analyzer.py` (division check)
+**Issue**: Guard check only looked at the CURRENT line for "if", "!=" keywords. `result = x / count` on its own line didn't contain these words, so it was flagged even though `if count != 0:` guarded it on the previous line.
+**Fix**: Scan up to 3 lines above the division for `if <var>` or `<var> !=` patterns before flagging.
+
+### 8.3 `=` vs `==` in conditions produced duplicate errors
+**File**: `backend/app/analyzer.py` (Python + C `=` checks)
+**Issue**: Both `ast.parse` (Python's built-in parser) AND the heuristic regex caught `x=5` in an `if`. Two `AssignmentInCondition` errors on the same line.
+**Fix**: Added dedup check before appending — only fire if no existing `AssignmentInCondition` on that line.
+
+### 8.4 Missing CSS unit regex didn't match numbers before `}`
+**File**: `backend/app/analyzer.py` (CSS section)
+**Issue**: Regex `:\s*\d+\s*$` required the number to be at end of line. `font-size: 16 }` (with trailing `}`) didn't match.
+**Fix**: Updated to `:\s*\d+\s*[;}\s]*$` to allow `;` / `}` after the number.
+
+---
+
+## 9. `=` vs `==` Detection — Inline Conditions
+
+### Problem
+The original C `=` check only looked at lines STARTING with `if`/`while`/`switch`. Code like `int x; if(x=5){}` (multiple statements on one line) was missed.
+
+### Fix (`backend/app/analyzer.py:610-628`)
+Changed from `re.match(ctrl_keywords, stripped)` (line must start with `if`) to `re.search(r'\b(if|while|switch)\s*\(', stripped)` (keyword can appear anywhere in line). Extracts text inside the parentheses and checks for `=` inside them only.
+
+Same change applied to the Python `=` check (`analyzer.py:408-417`) — switched from `re.match(r'^\s*(if|elif|while)\b', stripped)` to `re.search(r'\b(if|elif|while)\b', stripped)` so inline `elif` on the same line as preceding code is caught.
+
+---
+
+## 10. Frontend Cleanup
+
+### Removed `import React` from Header.jsx
+React 17+ JSX transform doesn't require `import React` at the top of component files. ESLint flagged it as unused. Removed to pass lint check. Build verified clean with `npx vite build`.
