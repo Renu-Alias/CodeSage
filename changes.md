@@ -247,3 +247,31 @@ Same change applied to the Python `=` check (`analyzer.py:408-417`) — switched
 
 ### Removed `import React` from Header.jsx
 React 17+ JSX transform doesn't require `import React` at the top of component files. ESLint flagged it as unused. Removed to pass lint check. Build verified clean with `npx vite build`.
+
+---
+
+## 11. Missing `#` on Preprocessor Directives — Plain Text Bug
+
+### Problem
+Lines like `include <stdio.h>` (without `#`) were silently ignored. The `#include` regex required `#` at the start, so these lines matched nothing and the analyzer reported "no critical issues found." Same for `define`, `ifdef`, `ifndef`, `endif`, `pragma`, `undef`, `error`, `warning` without `#`.
+
+### Fix (`backend/app/analyzer.py`)
+Added three new detection passes after the `#include` loop:
+
+1. **`include <header>` / `include "header"` without `#`** — regex `include\s+[<"](.+?)[>"]`. Flags as `SyntaxError` with message explaining preprocessor directives need `#`. Auto-fix: prepends `#` to the line. Also sets `has_stdio = True` if the header is `stdio.h` or `cstdio`, preventing duplicate `#include <stdio.h>` insertion from the `printf`/`scanf` check.
+
+2. **`include header` (no angle brackets, no `#`)** — regex `include\s+(\S+)`. Flags as `SyntaxError` with message about missing both `#` and `<>`. Auto-fix: rewrites to `#include <header>`.
+
+3. **Other preprocessor directives without `#`** — checks for `define`, `ifdef`, `ifndef`, `endif`, `pragma`, `undef`, `error`, `warning`, `line` at line start (without `#`). Each triggers a `SyntaxError` with `preprocessor directive` explanation. Auto-fix: prepends `#`.
+
+### Explanation added (`_get_error_explanation`)
+- `"preprocessor directive"` in message → explains `#include`/`#define` are special instructions for before compilation, needs `#` to work
+- `"include"` + `"angle"` in message → explains `#include <filename.h>` is the correct form, missing `#` and `<>` makes the compiler confused
+
+### Tests
+- `include <stdio.h>` without `#` → error detected, `#` prepended, no duplicate `#include` insertion
+- `include stdio.h` (no `<>`, no `#`) → error detected, rewritten to `#include <stdio.h>`
+- `define MAX 100` without `#` → error detected, `#` prepended
+- `ifdef`/`endif` without `#` → both detected
+- Proper `#include <stdio.h>` → zero false positives (no regression)
+- All 30 existing regression tests pass

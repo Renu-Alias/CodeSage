@@ -163,6 +163,10 @@ def _get_error_explanation(err, code_lines, lang):
         if "missing colon" in msg.lower() or "expected ':'" in msg.lower():
             snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
             return f"**Line {line}**: `{snippet}`\n\nIn Python, lines that start with `if`, `for`, `while`, `def`, or `class` must end with **`:`** (a colon). Think of the colon as saying \"here come the instructions.\" Without it, Python doesn't know the next indented block belongs to this line.\n\n**Fix:** Add `:` at the end of the line."
+        if "preprocessor directive" in msg.lower():
+            return f"**Line {line}**: `{code_line}`\n\nIn C/C++, `#include`, `#define`, `#ifdef` and similar lines are called **preprocessor directives**. They must start with `#` — the `#` tells the compiler \"this line is a special instruction for before compilation.\" Without `#`, the compiler treats it as regular code and can't find the file.\n\n**Fix:** Add `#` at the start of the line."
+        if "include" in msg.lower() and "angle" in msg.lower():
+            return f"**Line {line}**: `{code_line}`\n\nIn C/C++, `include` must have `#` at the beginning **and** angle brackets `<>` around the filename. Think of `#include <stdio.h>` as saying \"before compiling, go grab the toolbox named `stdio.h`.\" Without the `#` and `<>`, the compiler doesn't know what to do.\n\n**Fix:** Write `#include <filename.h>`."
         if "header" in msg.lower() and "mean" in msg.lower():
             return f"**Line {line}**: `{code_line}`\n\nThe header file name is misspelled. Header files (like `stdio.h`) are like ID cards — if you spell the name wrong, the compiler can't find the right toolbox.\n\n**Fix:** Check the spelling and use the correct header name."
         if "stdio.h" in msg.lower() or "printf" in msg.lower():
@@ -516,6 +520,47 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                 "line": line_num, "title": "Unknown Header",
                                 "message": f"Line {line_num}: `{header}` is not a standard {lang} header. Double-check the spelling."
                             })
+
+            # Detect include <header> / include "header" WITHOUT # (plain text include)
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                if stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*"): continue
+                inc_m = re.match(r'include\s+[<"](.+?)[>"]', stripped)
+                if inc_m:
+                    header = inc_m.group(1).strip()
+                    errors.append({
+                        "line": line_num, "type": "SyntaxError",
+                        "message": f"Line {line_num}: `include` is a preprocessor directive — it needs `#` at the start. Write `#include <{header}>` instead of `include <{header}>`."
+                    })
+                    fixes.setdefault(line_num, []).append(("replace", line, "#" + line))
+                    if header in ("stdio.h", "cstdio"):
+                        has_stdio = True
+                    continue
+                inc_plain = re.match(r'include\s+(\S+)', stripped)
+                if inc_plain:
+                    errors.append({
+                        "line": line_num, "type": "SyntaxError",
+                        "message": f"Line {line_num}: Did you mean `#include <{inc_plain.group(1)}>`? `include` without `#` and angle brackets won't work."
+                    })
+                    fixes.setdefault(line_num, []).append(("replace", line, "#include <" + inc_plain.group(1) + ">"))
+                    if inc_plain.group(1) in ("stdio.h", "cstdio"):
+                        has_stdio = True
+
+            # Detect preprocessor directives without #: define, ifdef, ifndef, endif, pragma, undef
+            preproc_kws = {"define", "ifdef", "ifndef", "endif", "pragma", "undef", "error", "warning", "line"}
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                if stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*"): continue
+                pp_match = re.match(r'(%s)\b' % '|'.join(sorted(preproc_kws, key=len, reverse=True)), stripped)
+                if pp_match:
+                    kw = pp_match.group(1)
+                    errors.append({
+                        "line": line_num, "type": "SyntaxError",
+                        "message": f"Line {line_num}: `{kw}` is a preprocessor directive — it needs `#` at the start. Write `#{kw} ...` instead."
+                    })
+                    fixes.setdefault(line_num, []).append(("replace", line, "#" + line))
 
             for idx, line in enumerate(lines):
                 line_num = idx + 1
