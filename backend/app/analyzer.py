@@ -1932,7 +1932,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     inside_self = False
                     for fname, (fstart, fend, findent) in fn_bodies.items():
                         if fname == fn_name and fstart and fstart < line_num:
-                            if line_num < fend:
+                            if line_num <= fend:
                                 inside_self = True
                                 break
                     if inside_self:
