@@ -350,7 +350,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         "line": line_num, "type": "MissingSemicolon",
                         "message": f"Line {line_num}: Missing `;`. Every statement must end with a semicolon — like a period at the end of a sentence."
                     })
-                    fixes.setdefault(line_num, []).append(("replace", line, line.rstrip() + ";"))
+                    fixes.setdefault(line_num, []).append(("append", ";"))
 
     # ------------------------------------------------------------------
     # C / C++ / C# / Dart
@@ -421,7 +421,6 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         pf_args = re.search(r'printf\s*\(([^)]+)\)', stripped)
                         if pf_args:
                             all_args = pf_args.group(1)
-                            # first arg is the format string
                             fmt_end = _find_string_end(all_args)
                             if fmt_end > 0:
                                 rest = all_args[fmt_end:].strip()
@@ -434,6 +433,10 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                                 "line": line_num, "type": "TypeMismatch",
                                                 "message": f"Line {line_num}: In `printf`, you passed `{va}` (address of `{var_name}`), but it expects a **value**, not an address. For `printf`, use `{var_name}` (without `&`). `&` is for `scanf`, not `printf`."
                                             })
+                                            close_q = line.index('"', line.index('"') + 1)
+                                            before = line[:close_q + 1]
+                                            after = line[close_q + 1:]
+                                            fixes.setdefault(line_num, []).append(("replace", line, before + after.replace(va, var_name, 1)))
 
                     # Check scanf("%d", var) — missing & where address is expected
                     if fn_name == "scanf":
@@ -455,6 +458,10 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                                     "line": line_num, "type": "TypeMismatch",
                                                     "message": f"Line {line_num}: In `scanf`, you passed `{vn}` (a value), but `scanf` needs an **address**. Use `&{vn}` instead. `scanf` writes to variables, so it needs to know where they live in memory."
                                                 })
+                                                close_q = line.index('"', line.index('"') + 1)
+                                                before = line[:close_q + 1]
+                                                after = line[close_q + 1:]
+                                                fixes.setdefault(line_num, []).append(("replace", line, before + after.replace(va_clean, "&" + vn, 1)))
 
         for idx, line in enumerate(lines):
             line_num = idx + 1
@@ -467,7 +474,20 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         "line": line_num, "type": "MissingSemicolon",
                         "message": f"Line {line_num}: Missing `;`. In {language}, every statement ends with a semicolon — like a period at the end of a sentence."
                     })
-                    fixes.setdefault(line_num, []).append(("replace", line, line.rstrip() + ";"))
+                    fixes.setdefault(line_num, []).append(("append", ";"))
+            if not stripped.startswith("#") and not stripped.startswith("//") and not stripped.startswith("/*"):
+                if not stripped.endswith(";") and not stripped.endswith("{") and not stripped.endswith("}") and not stripped.endswith("("):
+                    ctrl_kws = r'^\s*(if|for|while|switch|else|case|default|do)\b'
+                    if not re.match(ctrl_kws, stripped):
+                        fn_or_assign = re.search(r'\b\w+\s*\(', stripped) or re.search(r'\w+\s*=', stripped)
+                        if fn_or_assign:
+                            has_semi = any(e["line"] == line_num and e["type"] == "MissingSemicolon" for e in errors)
+                            if not has_semi:
+                                errors.append({
+                                    "line": line_num, "type": "MissingSemicolon",
+                                    "message": f"Line {line_num}: Missing `;`. In {language}, every statement ends with a semicolon — like a period at the end of a sentence."
+                                })
+                                fixes.setdefault(line_num, []).append(("append", ";"))
 
         if lang == "c":
             for idx, line in enumerate(lines):
@@ -543,7 +563,8 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             for fix in fixes[line_num]:
                 fix_type = fix[0]
                 if fix_type == "replace":
-                    line = fix[2]
+                    old_s, new_s = fix[1], fix[2]
+                    line = line.replace(old_s, new_s, 1)
                 elif fix_type == "append":
                     line = line.rstrip() + fix[1]
                 elif fix_type == "wrap":
@@ -567,9 +588,9 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         for idx, line in enumerate(display_lines[:8]):
             first_line = line.strip().split("\n")[0][:60]
             if first_line:
-                explanation += f"- **Line {idx+1}**: `{first_line}`\n"
+                explanation += f"  {idx+1}. `{first_line}`\n"
         if len(display_lines) > 8:
-            explanation += f"- ... and {len(display_lines)-8} more lines.\n"
+            explanation += f"  ... and {len(display_lines)} lines total\n"
     else:
         if errors:
             explanation = f"### Issues Detected\n\n{len(errors)} error(s) found.\n\n"
