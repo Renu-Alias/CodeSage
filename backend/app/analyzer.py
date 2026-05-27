@@ -347,6 +347,102 @@ def _get_error_explanation(err, code_lines, lang):
             "Either increase the allocation size or reduce the number of writes."
         )
 
+    if "NullPointerDereference" in etype:
+        return explain(
+            "You tried to access data through a pointer that was set to NULL (zero). A NULL pointer points to nothing — like trying to open a door that doesn't exist. Dereferencing it crashes your program with a segfault.",
+            "Check if the pointer is NULL before using it: `if (ptr != NULL) { ... }`. If it's NULL, don't use it."
+        )
+
+    if "DoubleFree" in etype:
+        return explain(
+            "You called free() on a pointer that was already freed. Freeing the same memory twice corrupts the heap manager's bookkeeping and can crash or create security holes. Like trying to return the same rental car twice.",
+            "Only call free() once per malloc(). After freeing, set the pointer to NULL to avoid accidental reuse."
+        )
+
+    if "MemoryLeak" in etype:
+        return explain(
+            "Memory was allocated with malloc() but never freed with free(). The memory stays allocated until the program exits, wasting system resources. Like renting a hotel room and never checking out — eventually all rooms are taken.",
+            "Add a free() call when the memory is no longer needed. Use a matching free() for every malloc()."
+        )
+
+    if "WildPointer" in etype:
+        return explain(
+            "You declared a pointer but didn't give it a value (it's uninitialized). It points to a random memory location. Using it is like throwing a dart blindfolded — you'll hit something, but probably not what you intended.",
+            "Initialize pointers when declared: `int *ptr = NULL;` or assign a valid address before use."
+        )
+
+    if "BufferUnderflow" in etype:
+        return explain(
+            "You used a negative index to access an array. Array indices start at 0. A negative index accesses memory before the array starts, reading or writing data that belongs to something else. Like trying to read page -1 of a book.",
+            "Ensure your index is never negative. Use an unsigned type for indices or add a bounds check."
+        )
+
+    if "SignedUnsignedMismatch" in etype:
+        return explain(
+            "You compared a signed integer (can be negative) with an unsigned integer (always positive). In C/C++, the signed value is converted to unsigned, making negative numbers unexpectedly large.",
+            "Cast both to the same type before comparing, or avoid mixing signed and unsigned in comparisons."
+        )
+
+    if "ModuloByZero" in etype:
+        return explain(
+            "You used the % operator with a divisor that could be zero. Modulo by zero crashes your program — it's mathematically undefined. Like asking 'how many groups of zero can I make?' — there's no answer!",
+            "Check that the divisor is not zero before using %: `if (divisor != 0) { result = value % divisor; }`"
+        )
+
+    if "StackOverflow" in etype:
+        return explain(
+            "A local variable is extremely large. Local variables live on the stack, which has limited space (typically 1-8 MB). Very large arrays on the stack can overflow into other memory and crash.",
+            "Use malloc() to allocate large buffers on the heap instead of declaring them as local arrays."
+        )
+
+    if "MissingReturn" in etype:
+        return explain(
+            "A function promises to return a value (non-void return type) but doesn't have a return statement. The function will return garbage data. Like promising to bring back an answer but coming back empty-handed.",
+            "Add a `return` statement that returns a value of the correct type."
+        )
+
+    if "DeadCode" in etype:
+        return explain(
+            "This code comes after a return, break, or continue statement. It will never run because the previous statement already exited the function or loop. Like writing stage directions after the curtain falls.",
+            "Remove the unreachable code or restructure the logic so it runs before the return/break."
+        )
+
+    if "MisspelledKeyword" in etype:
+        return explain(
+            "A word in your code looks like a misspelled keyword. Programming languages use specific words for specific instructions. If you spell a keyword wrong, the compiler or interpreter won't understand it.",
+            "Check the spelling and use the correct keyword."
+        )
+
+    if "InvalidOperatorUsage" in etype:
+        return explain(
+            "You used an operator that doesn't exist in this language. Different languages support different operators. For example, === exists in JavaScript/TypeScript but not in C or Python.",
+            "Use the correct operator for this language. Check the language documentation if unsure."
+        )
+
+    if "HardcodedCredential" in etype:
+        return explain(
+            "Your code contains what looks like a password, API key, or secret token written directly as a string. Hardcoding secrets is a security risk — anyone with access to the code can read them.",
+            "Store secrets in environment variables or a secure vault, and read them at runtime."
+        )
+
+    if "CommandInjection" in etype:
+        return explain(
+            "You're calling a system command execution function. If any part of the command comes from user input, an attacker could run arbitrary commands on your system — like letting a stranger type commands into your computer's terminal.",
+            "Avoid system()/exec() if possible. If necessary, strictly validate and sanitize all inputs."
+        )
+
+    if "PathTraversal" in etype:
+        return explain(
+            "Your code contains `../` or similar path traversal sequences. If this is combined with user input, attackers could access files outside the intended directory — like using a forged key to open rooms you shouldn't enter.",
+            "Validate and sanitize any user-supplied file paths. Use a whitelist of allowed paths."
+        )
+
+    if "AccidentalRecursion" in etype:
+        return explain(
+            "A function is calling itself. If there's no base case (a condition that stops the recursion), it will keep calling itself until the program runs out of memory and crashes.",
+            "Make sure you have a base case that stops the recursion, like `if (n <= 1): return n`."
+        )
+
     return f"Line {line}: {msg}"
 
 # ---------------------------------------------------------------------------
@@ -1291,6 +1387,439 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                 errors.append({
                     "line": line_num, "type": "InvalidColorValue",
                     "message": f"Line {line_num}: Plain numbers aren't valid colors. Use hex (`#ff0000`), rgb(`rgb(255,0,0)`), or named colors."
+                })
+
+    # ------------------------------------------------------------------
+    # C/C++ EXTRA CHECKS (null ptr, double free, memory leak, wild ptr,
+    #                     signed/unsigned, modulo zero, stack overflow,
+    #                     buffer underflow, missing return, dead code)
+    # ------------------------------------------------------------------
+    if lang in ("c", "c++"):
+        # Track uninitialized pointers and null assignments
+        nulled_ptrs = set()
+        uninit_ptrs = set()    # pointer vars declared without init
+        freed_twice = set()     # already counted for double free
+        alloc_lines = {}        # ptr -> line of malloc
+        passed_to_free = {}     # ptr -> count of free calls
+
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            if stripped.startswith("//") or stripped.startswith("/*"): continue
+
+            # Track NULL assignments
+            null_as = re.search(r'(\w+)\s*=\s*(NULL|nullptr|0)\s*;', stripped)
+            if null_as:
+                nulled_ptrs.add(null_as.group(1))
+
+            # Track pointer declaration without init (wild pointer)
+            wild = re.match(r'^\s*(?:\w+\s+)*\*+\s*(\w+)\s*;\s*$', stripped)
+            if wild:
+                vname = wild.group(1)
+                if vname not in malloc_vars and vname not in fn_params:
+                    uninit_ptrs.add(vname)
+
+            # Double free tracking
+            free_call = re.search(r'\bfree\s*\(\s*(\w+)\s*\)', stripped)
+            if free_call:
+                vname = free_call.group(1)
+                passed_to_free[vname] = passed_to_free.get(vname, 0) + 1
+                if passed_to_free[vname] > 1 and vname not in freed_twice:
+                    freed_twice.add(vname)
+                    err_exists = any(e["line"] == line_num and e["type"] == "DoubleFree" for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "DoubleFree",
+                            "message": f"Line {line_num}: `{vname}` was already freed earlier. Calling `free()` twice on the same pointer causes undefined behavior — like returning the same library book twice."
+                        })
+
+        # Memory leak: malloc'd vars never freed (check last occurrence before function end)
+        for vname, (ln, text) in malloc_vars.items():
+            if vname not in freed_vars:
+                # Check if it was passed to free at some point
+                err_exists = any(e["type"] == "MemoryLeak" and vname in e["message"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": ln, "type": "MemoryLeak",
+                        "message": f"Line {ln}: `{vname}` was allocated with malloc here but never freed. Memory that isn't freed leaks — like checking out a hotel room and never checking out."
+                    })
+
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            if stripped.startswith("//") or stripped.startswith("/*"): continue
+
+            # Null pointer dereference
+            null_used = re.search(r'(?<!\w)(\w+)\s*->', stripped)
+            if null_used:
+                vname = null_used.group(1)
+                if vname in nulled_ptrs:
+                    err_exists = any(e["line"] == line_num and "NullPointer" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "NullPointerDereference",
+                            "message": f"Line {line_num}: `{vname}` was set to NULL earlier but is being dereferenced with `->`. Dereferencing a NULL pointer crashes your program — like trying to open a door that doesn't exist."
+                        })
+
+            # Wild pointer (using uninitialized pointer)
+            for wp in uninit_ptrs:
+                if re.search(r'\b' + re.escape(wp) + r'\s*->|\*' + re.escape(wp) + r'\b', stripped):
+                    err_exists = any(e["line"] == line_num and "WildPointer" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "WildPointer",
+                            "message": f"Line {line_num}: `{wp}` was declared but not initialized. Using an uninitialized pointer is undefined behavior — like driving a car without knowing where the steering wheel is."
+                        })
+
+            # Buffer underflow (negative index)
+            underflow = re.search(r'(\w+)\s*\[\s*-\s*\d+\s*\]', stripped)
+            if underflow:
+                err_exists = any(e["line"] == line_num and "BufferUnderflow" in e["type"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "BufferUnderflow",
+                        "message": f"Line {line_num}: Using a negative index `[{underflow.group(0).split('[')[1]}` on `{underflow.group(1)}`. Negative indices access memory before the array — like stepping backward off a cliff."
+                    })
+
+            # Signed/unsigned mismatch in comparison
+            sus = re.search(r'(\w+)\s*(<|>|<=|>=)\s*(\w+)', stripped)
+            if sus:
+                v1, op, v2 = sus.group(1), sus.group(2), sus.group(3)
+                # Simple heuristic: if one looks like unsigned type and other signed
+                unsigned_kw = {"unsigned", "size_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t"}
+                if v1 in unsigned_kw or v2 in unsigned_kw:
+                    err_exists = any(e["line"] == line_num and "SignedUnsigned" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "SignedUnsignedMismatch",
+                            "message": f"Line {line_num}: Comparing signed and unsigned values can produce unexpected results. The signed value may become a large positive number when implicitly converted."
+                        })
+
+            # Modulo by zero
+            mod_zero = re.search(r'(\w+)\s*%\s*(\w+)', stripped)
+            if mod_zero:
+                divisor = mod_zero.group(2)
+                if divisor in nulled_ptrs:
+                    err_exists = any(e["line"] == line_num and "ModuloZero" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "ModuloByZero",
+                            "message": f"Line {line_num}: `{divisor}` could be zero. Modulo by zero crashes your program — like asking 'how many times does 0 fit into 10?' There's no answer!"
+                        })
+
+            # Stack overflow: detect very large local arrays
+            large_stack = re.match(r'^\s*(?:\w+\s+)+(\w+)\s*\[\s*(\d+)\s*\]\s*;', stripped)
+            if large_stack:
+                vname = large_stack.group(1)
+                size = int(large_stack.group(2))
+                if size > 1000000:
+                    err_exists = any(e["line"] == line_num and "StackOverflow" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "StackOverflow",
+                            "message": f"Line {line_num}: `{vname}` allocates {size} elements on the stack ({size * 4} bytes). Very large stack allocations can overflow the stack and crash."
+                        })
+
+            # Missing return statement in non-void function
+            non_void_fn = re.match(r'^(?:\w+\s+)+(?:[*\s]*)(\w+)\s*\(', stripped)
+            if non_void_fn and not stripped.startswith("void") and not stripped.startswith("int main") and not stripped.startswith("//") and not stripped.startswith("/*"):
+                fn_name = non_void_fn.group(1)
+                # Find matching function body and check for return
+                if fn_name in func_bodies:
+                    fstart, fend = func_bodies[fn_name]
+                    if fstart and fend:
+                        body_lines = lines[fstart:fend]
+                        has_return = any('return' in l for l in body_lines)
+                        has_void = any('void' in l and fn_name in l for l in body_lines)
+                        if not has_return and not has_void:
+                            err_exists = any(e["type"] == "MissingReturn" and fn_name in e["message"] for e in errors)
+                            if not err_exists:
+                                errors.append({
+                                    "line": line_num, "type": "MissingReturn",
+                                    "message": f"Line {line_num}: Function `{fn_name}` has a non-void return type but is missing a `return` statement. Like promising to give someone an answer but never delivering it."
+                                })
+
+            # Dead code: code after return/break/continue (no label)
+            if re.search(r'\b(return|break|continue)\s*;', stripped):
+                for ni in range(idx + 1, min(idx + 4, len(lines))):
+                    nxt = lines[ni].strip()
+                    if not nxt or nxt.startswith("//") or nxt.startswith("/*") or nxt == "}":
+                        continue
+                    if nxt.endswith(":") and not nxt.startswith("case") and not nxt.startswith("default"):
+                        break  # label
+                    err_exists = any(e["line"] == ni + 1 and "DeadCode" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": ni + 1, "type": "DeadCode",
+                            "message": f"Line {ni + 1}: Code after `return`/`break`/`continue` on line {line_num} will never run. Like writing instructions after a full stop — nobody reads them."
+                        })
+                    break  # only flag the first line after
+
+    # ------------------------------------------------------------------
+    # PYTHON MISSING RETURN, SHADOWING, ACCIDENTAL RECURSION, DEAD CODE
+    # ------------------------------------------------------------------
+    if lang == "python":
+        # Variable shadowing: function param shadows outer variable
+        defined_vars = {}
+        for idx, line in enumerate(lines):
+            assign = re.match(r'^\s*([a-zA-Z_]\w*)\s*=', line)
+            if assign:
+                defined_vars[assign.group(1)] = idx + 1
+
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            fn_def = re.match(r'^\s*def\s+(\w+)\s*\((.*?)\)\s*:', stripped)
+            if fn_def:
+                fn_name = fn_def.group(1)
+                params_str = fn_def.group(2)
+                for param in params_str.split(','):
+                    pname = param.strip().split('=')[0].strip()
+                    if pname and pname in defined_vars and defined_vars[pname] < line_num:
+                        # Check if the outer var is actually used inside the function
+                        err_exists = any(e["line"] == line_num and "VariableShadowing" in e["type"] for e in errors)
+                        if not err_exists:
+                            suggestions.append({
+                                "line": line_num, "title": "Variable Shadowing",
+                                "message": f"Line {line_num}: Parameter `{pname}` shadows a variable defined on line {defined_vars[pname]}. Like naming your pet 'Sun' when you already have a star called Sun — confusing!"
+                            })
+
+        # Find function boundaries for missing return detection (indentation-based)
+        fn_bodies = {}
+        fn_stack = []
+        for idx, line in enumerate(lines):
+            stripped = line.strip()
+            fn_m = re.match(r'^\s*def\s+(\w+)\s*\(', stripped)
+            if fn_m:
+                fn_name = fn_m.group(1)
+                current_indent = len(line) - len(line.lstrip())
+                fn_bodies[fn_name] = [idx + 1, len(lines), current_indent]
+            else:
+                # Detect end of function by reduced indentation
+                for fn_name, (fstart, fend, findent) in list(fn_bodies.items()):
+                    if fend == len(lines) and stripped and not stripped.startswith("#") and not stripped.startswith("'''") and not stripped.startswith('"""'):
+                        line_indent = len(line) - len(line.lstrip())
+                        if line_indent <= findent and idx + 1 > fstart:
+                            # Check it's not a decorator or continuation
+                            if not stripped.startswith("@") and not stripped.startswith(".") and not stripped.startswith(")"):
+                                fn_bodies[fn_name][1] = idx + 1
+
+        # Missing return detection
+        for fn_name, (fstart, fend, findent) in fn_bodies.items():
+            has_return = any('return' in lines[i] for i in range(fstart, min(fend, len(lines))))
+            if not has_return:
+                err_exists = any(e["type"] == "MissingReturn" and fn_name in e["message"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": fstart, "type": "MissingReturn",
+                        "message": f"Line {fstart}: Function `{fn_name}` is missing a `return` statement. In Python, if a function doesn't return a value, it returns `None` — like saying you'll bring dessert but showing up empty-handed."
+                    })
+
+        # Accidental recursion: function calling itself by the same name
+        fn_names = set()
+        for idx, line in enumerate(lines):
+            stripped = line.strip()
+            fn_m = re.match(r'^\s*def\s+(\w+)\s*\(', stripped)
+            if fn_m:
+                fn_names.add(fn_m.group(1))
+
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            for fn_name in fn_names:
+                # Check if function calls itself (outside a recursive pattern)
+                if re.search(r'\b' + re.escape(fn_name) + r'\s*\(', stripped):
+                    # Find if this line is inside the function body of fn_name
+                    inside_self = False
+                    for fname, (fstart, fend, findent) in fn_bodies.items():
+                        if fname == fn_name and fstart and fstart < line_num:
+                            if line_num < fend:
+                                inside_self = True
+                                break
+                    if inside_self:
+                        # Count recursive calls: if 2+ calls to self without base case
+                        err_exists = any(e["line"] == line_num and e["type"] == "AccidentalRecursion" for e in errors)
+                        if not err_exists:
+                            suggestions.append({
+                                "line": line_num, "title": "Possible Accidental Recursion",
+                                "message": f"Line {line_num}: `{fn_name}` calls itself. If there's no base case to stop it, this will cause infinite recursion and crash with a `RecursionError`."
+                            })
+
+        # Dead code in Python
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            if re.match(r'^\s*(return|break|continue)\b', stripped):
+                for ni in range(idx + 1, min(idx + 4, len(lines))):
+                    nxt = lines[ni].strip()
+                    if not nxt or nxt.startswith("#") or nxt == "pass":
+                        continue
+                    if nxt.startswith(("def ", "class ", "@", "if ", "elif ", "else:", "try:", "except", "finally:", "for ", "while ")):
+                        break
+                    err_exists = any(e["line"] == ni + 1 and "DeadCode" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": ni + 1, "type": "DeadCode",
+                            "message": f"Line {ni + 1}: Code after `return`/`break`/`continue` on line {line_num} will never be reached. Like writing instructions after a full stop."
+                        })
+                    break
+
+    # ------------------------------------------------------------------
+    # JS MISSING RETURN, DEAD CODE
+    # ------------------------------------------------------------------
+    if lang in ("javascript", "typescript"):
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            if re.search(r'\b(return|break|continue)\s*;', stripped):
+                for ni in range(idx + 1, min(idx + 4, len(lines))):
+                    nxt = lines[ni].strip()
+                    if not nxt or nxt.startswith("//") or nxt.startswith("/*") or nxt in ("}", "});"):
+                        continue
+                    if nxt.endswith(":") and not nxt.startswith("case") and not nxt.startswith("default"):
+                        break
+                    err_exists = any(e["line"] == ni + 1 and "DeadCode" in e["type"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": ni + 1, "type": "DeadCode",
+                            "message": f"Line {ni + 1}: Code after `return`/`break`/`continue` on line {line_num} will never run."
+                        })
+                    break
+
+    # ------------------------------------------------------------------
+    # CROSS-LANGUAGE CHECKS (hardcoded credentials, command injection,
+    #                        path traversal, misspelled keywords,
+    #                        invalid operator usage)
+    # ------------------------------------------------------------------
+    c_keywords = {"auto", "break", "case", "char", "const", "continue", "default", "do", "double",
+                  "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long",
+                  "register", "restrict", "return", "short", "signed", "sizeof", "static", "struct",
+                  "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "include",
+                  "define", "ifdef", "ifndef", "endif", "malloc", "free", "printf", "scanf", "NULL"}
+
+    python_keywords = {"False", "None", "True", "and", "as", "assert", "async", "await", "break",
+                       "class", "continue", "def", "del", "elif", "else", "except", "finally", "for",
+                       "from", "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or",
+                       "pass", "raise", "return", "try", "while", "with", "yield"}
+
+    js_keywords = {"async", "await", "break", "case", "catch", "class", "const", "continue",
+                   "debugger", "default", "delete", "do", "else", "enum", "export", "extends",
+                   "false", "finally", "for", "function", "if", "import", "in", "instanceof", "let",
+                   "new", "null", "of", "return", "super", "switch", "this", "throw", "true", "try",
+                   "typeof", "undefined", "var", "void", "while", "with", "yield"}
+
+    # Misspelled keyword detection
+    if lang in ("c", "c++"):
+        kw_set = c_keywords
+    elif lang == "python":
+        kw_set = python_keywords
+    elif lang in ("javascript", "typescript"):
+        kw_set = js_keywords
+    else:
+        kw_set = set()
+
+    if kw_set:
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*"):
+                continue
+            words = re.findall(r'\b([a-zA-Z_]\w*)\b', stripped)
+            for w in words:
+                if w in kw_set:
+                    continue
+                best = min(kw_set, key=lambda k: _edit_distance(w, k))
+                dist = _edit_distance(w, best)
+                if 1 <= dist <= 2 and dist < len(w) * 0.5:
+                    err_exists = any(e["line"] == line_num and "MisspelledKeyword" in e["type"] and w in e["message"] for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "MisspelledKeyword",
+                            "message": f"Line {line_num}: `{w}` is not a valid keyword. Did you mean `{best}`? Like writing `{w}` when you meant `{best}` — close, but not quite right."
+                        })
+                    break  # one keyword per line
+
+    # Invalid operator usage (language-specific)
+    for idx, line in enumerate(lines):
+        line_num = idx + 1
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*"):
+            continue
+        # === outside JS/TS
+        if lang not in ("javascript", "typescript"):
+            if re.search(r'[^=!]=[^=!]', stripped) and re.search(r'={3,}', stripped):
+                err_exists = any(e["line"] == line_num and "InvalidOperator" in e["type"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "InvalidOperatorUsage",
+                        "message": f"Line {line_num}: `===` is not valid in {language}. Use `==` for equality comparison."
+                    })
+        # => in non-JS/TS (arrow function)
+        if lang not in ("javascript", "typescript", "dart", "kotlin", "rust", "go"):
+            if re.search(r'=\s*>\s*[^{]', stripped) and '=>' in stripped:
+                # Not a lambda context
+                err_exists = any(e["line"] == line_num and "InvalidOperator" in e["type"] and "=>" in e["message"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "InvalidOperatorUsage",
+                        "message": f"Line {line_num}: `=>` (arrow function) is not valid in {language}. Maybe you meant `>=` or `<=`?"
+                    })
+
+    # Hardcoded credentials
+    secret_patterns = [
+        r'(password|passwd|pwd|secret|api_key|apikey|token|auth_token)\s*[:=]\s*["\'][^"\']+["\']',
+        r'(password|passwd|pwd|secret|api_key|apikey|token|auth_token)\s*[:=]\s*["\'][^"\']+["\']',
+    ]
+    for idx, line in enumerate(lines):
+        line_num = idx + 1
+        stripped = line.strip()
+        if stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*"):
+            continue
+        for pat in secret_patterns:
+            if re.search(pat, stripped, re.I):
+                err_exists = any(e["line"] == line_num and "HardcodedCredential" in e["type"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "HardcodedCredential",
+                        "message": f"Line {line_num}: Possible hardcoded credential detected. Storing passwords, API keys, or tokens in code is a security risk. Use environment variables instead."
+                    })
+                break
+
+    # Command injection (exec/system with dynamic input)
+    for idx, line in enumerate(lines):
+        line_num = idx + 1
+        stripped = line.strip()
+        if stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*"):
+            continue
+        if lang == "python":
+            if re.search(r'\b(exec|eval|os\.system|subprocess\.call|subprocess\.Popen)\s*\(', stripped):
+                err_exists = any(e["line"] == line_num and "CommandInjection" in e["type"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "CommandInjection",
+                        "message": f"Line {line_num}: Using `{stripped.split('(')[0].split(' ')[-1]}()` with user input can lead to command injection. Prefer safe alternatives or validate inputs strictly."
+                    })
+        elif lang in ("c", "c++"):
+            if re.search(r'\b(system|popen|exec[lvpe]?)\s*\(', stripped):
+                err_exists = any(e["line"] == line_num and "CommandInjection" in e["type"] for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "CommandInjection",
+                        "message": f"Line {line_num}: Calling `system()` or `exec()` with user input can execute arbitrary commands. Validate all inputs and prefer safer APIs."
+                    })
+
+    # Path traversal detection
+    for idx, line in enumerate(lines):
+        line_num = idx + 1
+        stripped = line.strip()
+        if stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*"):
+            continue
+        if re.search(r'\.\./|\.\.\\|\.\.[/\\]', stripped):
+            err_exists = any(e["line"] == line_num and "PathTraversal" in e["type"] for e in errors)
+            if not err_exists:
+                errors.append({
+                    "line": line_num, "type": "PathTraversal",
+                    "message": f"Line {line_num}: Detected `../` (path traversal pattern). If this comes from user input, it can allow access to files outside the intended directory."
                 })
 
     # ------------------------------------------------------------------
