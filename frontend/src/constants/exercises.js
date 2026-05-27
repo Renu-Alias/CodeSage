@@ -77,10 +77,10 @@ export const EXERCISES = {
       explanation: "The ? marks the parameter as optional — it can be omitted when calling the function."
     },
     {
-      question: "Which keyword prevents a class from being extended?",
-      options: ["static", "private", "final", "readonly"],
-      correct: 2,  // Actually 'final' doesn't exist; it should be 'sealed'. Let me check TS...
-      explanation: "Wait, TypeScript uses the 'private' keyword for access control but not 'final'. The 'readonly' modifier prevents reassignment."
+      question: "Which access modifier makes a member visible only within its own class?",
+      options: ["public", "private", "protected", "readonly"],
+      correct: 1,
+      explanation: "The 'private' modifier restricts access to the class itself — subclasses and external code cannot access private members."
     }
   ],
   "C++": [

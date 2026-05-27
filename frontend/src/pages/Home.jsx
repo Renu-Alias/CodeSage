@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Code2, AlertTriangle, Lightbulb, Compass, Award, Star } from 'lucide-react';
+import { Code2, AlertTriangle, Lightbulb, Compass, Award, Star } from 'lucide-react';
 import { LANGUAGES } from '../constants/languages';
 
 export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan, isLoggedIn }) {

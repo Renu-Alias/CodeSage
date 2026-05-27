@@ -1606,7 +1606,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
 
         # Missing return detection
         for fn_name, (fstart, fend, findent) in fn_bodies.items():
-            has_return = any('return' in lines[i] for i in range(fstart, min(fend, len(lines))))
+            has_return = any(re.search(r'^\s*return\b', lines[i]) for i in range(fstart, min(fend, len(lines))))
             if not has_return:
                 err_exists = any(e["type"] == "MissingReturn" and fn_name in e["message"] for e in errors)
                 if not err_exists:

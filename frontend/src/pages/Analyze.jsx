@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Play, Copy, Check, Terminal, AlertCircle, Sparkles, FileText, ChevronRight, BarChart3, Cpu, HardDrive, Zap, Code2, Layers } from 'lucide-react';
+import { Upload, Play, Copy, Check, Terminal, Sparkles, FileText, BarChart3, Cpu, HardDrive, Zap, Code2, Layers } from 'lucide-react';
 import { LANGUAGES, extToLanguage, acceptExtensions } from '../constants/languages';
 
 const DEFAULT_SNIPPETS = {
@@ -167,7 +167,7 @@ const DEFAULT_FILENAMES = {
   CSS: 'styles.css',
 };
 
-export default function Analyze({ sampleCode, setSampleCode }) {
+export default function Analyze({ sampleCode }) {
   const getInitialSnippet = () => {
     if (sampleCode?.code) return sampleCode.code;
     const lang = sampleCode?.language || 'Python';
@@ -203,7 +203,7 @@ export default function Analyze({ sampleCode, setSampleCode }) {
       setLanguage(sampleCode.language);
       setFilename(sampleCode.filename);
       // Run analysis on sample load immediately
-      triggerAnalysis(sampleCode.code, sampleCode.language, mode);
+      triggerAnalysis(sampleCode.code, sampleCode.language, mode, sampleCode.filename);
     }
   }, [sampleCode]);
 
@@ -234,7 +234,7 @@ export default function Analyze({ sampleCode, setSampleCode }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const triggerAnalysis = async (currentCode, currentLang, currentMode) => {
+  const triggerAnalysis = async (currentCode, currentLang, currentMode, currentFilename) => {
     setLoading(true);
     setSaved(false);
 
@@ -246,7 +246,7 @@ export default function Analyze({ sampleCode, setSampleCode }) {
           code: currentCode,
           language: currentLang,
           mode: currentMode,
-          filename: filename
+          filename: currentFilename || filename
         })
       });
 
@@ -288,12 +288,18 @@ export default function Analyze({ sampleCode, setSampleCode }) {
   const renderFixedDiff = () => {
     const originalLines = code.split('\n');
     const correctedLines = fixedCode.split('\n');
+    const addedSet = new Set();
+    // Track lines that appear more than once
+    correctedLines.forEach((line, idx) => {
+      if (originalLines[idx] !== line) {
+        addedSet.add(line);
+      }
+    });
 
     return (
       <div className="diff-view font-mono">
         {correctedLines.map((line, idx) => {
-          const isAdded = !originalLines.includes(line);
-          const isRemoved = originalLines.length > idx && !correctedLines.includes(originalLines[idx]);
+          const isAdded = originalLines.length <= idx || originalLines[idx] !== line && addedSet.has(line);
           
           return (
             <div key={idx} className={`diff-line-row ${isAdded ? 'diff-added' : ''}`}>

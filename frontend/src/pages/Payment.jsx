@@ -41,10 +41,33 @@ export default function Payment({ selectedPlan, setCurrentPage }) {
       <div className="payment-page">
         <div className="payment-card payment-success">
           <div className="success-check"><Check size={40} /></div>
-          <h2>Payment successful!</h2>
-          <p>You're now on the <strong>{plan.name}</strong> plan. Start exploring all features.</p>
+          <h2>All set!</h2>
+          <p>{plan.price === 0 ? "You're on the Free plan." : `You're now on the ${plan.name} plan. Start exploring all features.`}</p>
           <button className="btn btn-primary" onClick={() => setCurrentPage('dashboard')}>
             Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (plan.price === 0) {
+    return (
+      <div className="payment-page">
+        <div className="payment-card">
+          <button className="payment-back-btn" onClick={() => setCurrentPage('home')}>
+            <ChevronLeft size={18} /> Back
+          </button>
+          <div className="payment-plan-summary" style={{ borderLeftColor: plan.color }}>
+            <span className="payment-plan-label">Selected plan</span>
+            <span className="payment-plan-name">{plan.name}</span>
+            <span className="payment-plan-price">Free</span>
+          </div>
+          <p style={{ fontSize: '14px', color: 'var(--text-medium)', margin: '16px 0' }}>
+            The Free plan includes 10 code analysis snippets per day. No payment needed.
+          </p>
+          <button className="btn btn-primary payment-submit-btn" onClick={handleSubmit}>
+            Confirm Free Plan
           </button>
         </div>
       </div>
@@ -62,8 +85,8 @@ export default function Payment({ selectedPlan, setCurrentPage }) {
           <span className="payment-plan-label">Selected plan</span>
           <span className="payment-plan-name">{plan.name}</span>
           <span className="payment-plan-price">
-            {plan.price === 0 ? 'Free' : `₹${plan.price}`}
-            {plan.price > 0 && <span className="payment-plan-period">{plan.period}</span>}
+            ₹{plan.price}
+            <span className="payment-plan-period">{plan.period}</span>
           </span>
         </div>
 
@@ -138,7 +161,7 @@ export default function Payment({ selectedPlan, setCurrentPage }) {
             {processing ? (
               <><span className="spinner" /> Processing...</>
             ) : (
-              `Pay ${plan.price === 0 ? '₹0' : `₹${plan.price}`}`
+              `Pay ₹${plan.price}`
             )}
           </button>
         </form>

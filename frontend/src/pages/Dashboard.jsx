@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Download, Flame, Rocket, Award, Bug, Play, HelpCircle, ChevronRight, User, Mail, Calendar } from 'lucide-react';
+import { Search, Download, Flame, Rocket, Award, Bug, ChevronRight, Mail, Calendar } from 'lucide-react';
 import { LANGUAGES } from '../constants/languages';
 
 export default function Dashboard({ setCurrentPage, setSampleCode }) {
@@ -87,7 +87,7 @@ export default function Dashboard({ setCurrentPage, setSampleCode }) {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard`);
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/dashboard`);
         if (res.ok) {
           const data = await res.json();
           setMetrics(data.metrics);
@@ -184,7 +184,7 @@ export default function Dashboard({ setCurrentPage, setSampleCode }) {
             <span className="badge badge-brand">Free plan</span>
           </div>
         </div>
-        <button className="btn btn-secondary" onClick={() => setCurrentPage('learn')}>
+        <button className="btn btn-secondary" onClick={() => setCurrentPage('payment')}>
           Upgrade to Pro
         </button>
       </div>

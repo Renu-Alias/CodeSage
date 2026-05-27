@@ -7,7 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Learn from './pages/Learn';
 import Payment from './pages/Payment';
 import Login from './pages/Login';
-import Signup from './pages/Signup';
+import SignUp from './pages/SignUp';
 import AccountSettings from './pages/AccountSettings';
 import OnboardingLearning from './pages/OnboardingLearning';
 import OnboardingLevel from './pages/OnboardingLevel';
@@ -50,7 +50,7 @@ function App() {
       case 'login':
         return <Login setCurrentPage={setCurrentPage} setIsLoggedIn={setIsLoggedIn} />;
       case 'signup':
-        return <Signup setCurrentPage={setCurrentPage} setIsLoggedIn={setIsLoggedIn} />;
+        return <SignUp setCurrentPage={setCurrentPage} setIsLoggedIn={setIsLoggedIn} />;
       case 'onboarding-learning':
         return <OnboardingLearning setCurrentPage={setCurrentPage} setOnboardingData={setOnboardingData} />;
       case 'onboarding-level':

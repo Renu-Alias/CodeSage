@@ -41,7 +41,6 @@ export default function Learn({ setCurrentPage }) {
   };
 
   const weaknesses = LANGUAGE_WEAKNESS_MAP[selectedLang] || [];
-  const langNames = LANGUAGES.map(l => l.name);
   const allLangs = Object.keys(EXERCISES);
   const weakAreas = [
     { topic: "Syntax correctness", count: Math.floor(Math.random() * 15 + 10) },
