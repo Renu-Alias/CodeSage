@@ -15,10 +15,10 @@ CodeSage is a web platform designed for students learning to code. Unlike generi
 ## Why CodeSage? — Our USPs
 
 ### 1. Learning Path Intelligence *(Core USP)*
-Most debuggers give you a one-shot fix and forget you exist. CodeSage tracks your errors **across every session** and builds a personalised weakness report — identifying your top recurring mistake patterns (e.g. "loop logic", "null handling", "variable scoping") and recommending targeted exercises to fix them. No other student-focused tool does longitudinal mistake tracking like this.
+Instead of just flagging errors, CodeSage tracks a student's recurring mistakes over time and builds a personalized weakness report — *"You struggle with loop logic and variable scoping. Here are 3 exercises."* No existing tool does longitudinal student tracking like this. This turns CodeSage from a one-shot debugger into a **learning companion**.
 
-### 2. Beginner-First Explanations
-Every error is explained at **your level**, not a senior developer's. Toggle between Beginner and Intermediate mode. Beginner mode uses plain English and analogies — *"Your loop never stops because there's no exit condition — think of a song on repeat with no stop button."* Jargon only appears when you're ready for it.
+### 2. Explain Like I'm a Student
+Most AI tools explain errors in developer language. CodeSage explains at the student's **self-declared level** (Beginner / Intermediate), with analogies, not jargon. *"Your loop never stops because there's no exit condition — think of it like a song on repeat with no stop button."* Replit and Copilot don't do level-aware explanations.
 
 ### 3. Progress Tracking Over Time
 CodeSage stores your full upload history and plots your improvement over time. Watch your error count drop week over week. Your dashboard becomes a mirror of your growth as a programmer.
