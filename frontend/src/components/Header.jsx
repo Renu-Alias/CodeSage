@@ -46,12 +46,19 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
     window.scrollTo(0, 0);
   };
 
+  const [notifRead, setNotifRead] = useState(false);
+
   const notifications = [
-    { icon: <Gift size={16} />, title: "🎉 Special Offer!", desc: "Get 50% off on Pro plan — limited time only.", time: "2 hours ago" },
-    { icon: <Megaphone size={16} />, title: "📢 New Feature", desc: "AI-powered code explanations are now live!", time: "1 day ago" },
-    { icon: <Star size={16} />, title: "⭐ Milestone", desc: "You've analyzed 10 code snippets. Keep going!", time: "3 days ago" },
-    { icon: <MessageSquare size={16} />, title: "💡 Tip", desc: "Try the Dashboard to track your progress.", time: "5 days ago" },
+    { icon: <Gift size={16} />, title: "Special Offer!", desc: "Get 50% off on Pro plan — limited time only.", time: "2 hours ago" },
+    { icon: <Megaphone size={16} />, title: "New Feature", desc: "AI-powered code explanations are now live!", time: "1 day ago" },
+    { icon: <Star size={16} />, title: "Milestone", desc: "You've analyzed 10 code snippets. Keep going!", time: "3 days ago" },
+    { icon: <MessageSquare size={16} />, title: "Tip", desc: "Try the Dashboard to track your progress.", time: "5 days ago" },
   ];
+
+  const handleMarkAllRead = () => {
+    setNotifRead(true);
+    setNotifOpen(false);
+  };
 
   const handleAppearance = () => {
     document.body.classList.toggle('dark-mode');
@@ -112,7 +119,7 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
               <div className="dropdown-wrapper" ref={notifRef}>
                 <button className="icon-btn" title="Notifications" onClick={() => { setNotifOpen(!notifOpen); setSettingsOpen(false); }}>
                   <Bell size={20} className="header-icon" />
-                  <span className="notification-dot" />
+                  {!notifRead && <span className="notification-dot" />}
                 </button>
                 {notifOpen && (
                   <div className="dropdown-menu dropdown-notif">
@@ -129,7 +136,7 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
                         </div>
                       ))}
                     </div>
-                    <div className="dropdown-footer" onClick={() => setNotifOpen(false)}>Mark all as read</div>
+                    <div className="dropdown-footer" onClick={handleMarkAllRead}>Mark all as read</div>
                   </div>
                 )}
               </div>

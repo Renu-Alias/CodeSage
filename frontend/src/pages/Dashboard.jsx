@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Download, Flame, Rocket, Award, Bug, Play, HelpCircle, ChevronRight } from 'lucide-react';
+import { Search, Download, Flame, Rocket, Award, Bug, Play, HelpCircle, ChevronRight, User, Mail, Calendar } from 'lucide-react';
 import { LANGUAGES } from '../constants/languages';
 
 export default function Dashboard({ setCurrentPage, setSampleCode }) {
@@ -168,6 +168,24 @@ export default function Dashboard({ setCurrentPage, setSampleCode }) {
         <h2>Your dashboard</h2>
         <button className="btn btn-secondary btn-export" onClick={handleExport}>
           <Download size={14} /> Export history
+        </button>
+      </div>
+
+      {/* PROFILE / ACCOUNT SECTION */}
+      <div className="profile-card card">
+        <div className="profile-avatar-large">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100" alt="Student" />
+        </div>
+        <div className="profile-info">
+          <h3>Student Name</h3>
+          <div className="profile-meta">
+            <span><Mail size={14} /> student@example.com</span>
+            <span><Calendar size={14} /> Member since March 2026</span>
+            <span className="badge badge-brand">Free plan</span>
+          </div>
+        </div>
+        <button className="btn btn-secondary" onClick={() => setCurrentPage('learn')}>
+          Upgrade to Pro
         </button>
       </div>
 
