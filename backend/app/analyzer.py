@@ -707,7 +707,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         for idx, line in enumerate(lines):
             line_num = idx + 1
             stripped = line.strip()
-            if re.search(r':\s*\d+\s*$', stripped) and not re.search(r'(px|em|rem|%|vh|vw|pt|cm|mm)', stripped):
+            if re.search(r':\s*\d+\s*[;}\s]*$', stripped) and not re.search(r'(px|em|rem|%|vh|vw|pt|cm|mm)', stripped):
                 suggestions.append({
                     "line": line_num, "title": "Missing CSS Unit",
                     "message": f"Line {line_num}: Number without a unit. Use `px`, `em`, `rem`, or `%` (e.g., `16px`)."
