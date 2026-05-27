@@ -157,74 +157,149 @@ def _get_error_explanation(err, code_lines, lang):
     etype = err.get("type", "")
     msg = err.get("message", "")
     code_line = code_lines[line - 1].strip() if line <= len(code_lines) else ""
+    snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
 
-    # --- SyntaxError sub-types ---
+    # Helper: build a clean explanation block
+    def explain(why, fix):
+        text = f"Line {line}: {snippet}\n\n{why}"
+        if fix:
+            text += f"\n\nFix: {fix}"
+        return text
+
     if "SyntaxError" in etype:
         if "missing colon" in msg.lower() or "expected ':'" in msg.lower():
-            snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
-            return f"**Line {line}**: `{snippet}`\n\nIn Python, lines that start with `if`, `for`, `while`, `def`, or `class` must end with **`:`** (a colon). Think of the colon as saying \"here come the instructions.\" Without it, Python doesn't know the next indented block belongs to this line.\n\n**Fix:** Add `:` at the end of the line."
+            return explain(
+                "In Python, lines starting with if, for, while, def, or class must end with a colon (:). The colon tells Python that the next indented block belongs to this line.",
+                "Add : at the end of the line."
+            )
         if "preprocessor directive" in msg.lower():
-            return f"**Line {line}**: `{code_line}`\n\nIn C/C++, `#include`, `#define`, `#ifdef` and similar lines are called **preprocessor directives**. They must start with `#` — the `#` tells the compiler \"this line is a special instruction for before compilation.\" Without `#`, the compiler treats it as regular code and can't find the file.\n\n**Fix:** Add `#` at the start of the line."
+            return explain(
+                "In C/C++, lines like #include, #define, #ifdef are called preprocessor directives. They must start with #. The # tells the compiler this line is a special instruction before compilation. Without #, the compiler treats it as regular code and cannot find the file.",
+                "Add # at the start of the line."
+            )
         if "include" in msg.lower() and "angle" in msg.lower():
-            return f"**Line {line}**: `{code_line}`\n\nIn C/C++, `include` must have `#` at the beginning **and** angle brackets `<>` around the filename. Think of `#include <stdio.h>` as saying \"before compiling, go grab the toolbox named `stdio.h`.\" Without the `#` and `<>`, the compiler doesn't know what to do.\n\n**Fix:** Write `#include <filename.h>`."
+            return explain(
+                "In C/C++, include needs both # at the beginning and angle brackets <> around the filename. #include <stdio.h> means before compiling, go grab the toolbox named stdio.h. Without # and <>, the compiler does not know what to do.",
+                "Write #include <filename.h>."
+            )
         if "header" in msg.lower() and "mean" in msg.lower():
-            return f"**Line {line}**: `{code_line}`\n\nThe header file name is misspelled. Header files (like `stdio.h`) are like ID cards — if you spell the name wrong, the compiler can't find the right toolbox.\n\n**Fix:** Check the spelling and use the correct header name."
+            return explain(
+                "The header file name is misspelled. Header files like stdio.h are like ID cards. If you spell the name wrong, the compiler cannot find the right toolbox.",
+                "Check the spelling and use the correct header name."
+            )
         if "stdio.h" in msg.lower() or "printf" in msg.lower():
-            return f"**Line {line}**: `{code_line}`\n\nIn C, to use functions like `printf` or `scanf`, you must first include `stdio.h` at the top of your file. `stdio.h` is the \"standard input/output\" library — it's like a toolbox that contains the `printf` tool.\n\n**Fix:** Add `#include <stdio.h>` at the very top of your code."
+            return explain(
+                "In C, to use functions like printf or scanf, you must first include stdio.h at the top of your file. stdio.h is the standard input/output library, like a toolbox containing the printf tool.",
+                "Add #include <stdio.h> at the very top of your code."
+            )
         if "unclosed" in msg.lower():
-            snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
             if "string" in msg.lower():
-                return f"**Line {line}**: `{snippet}`\n\nA string (text inside quotes) was started but never finished. Every opening quote needs a matching closing quote — like a pair of bookends.\n\n**Fix:** Add the matching closing quote at the end of the string."
-            if "(" in msg or ")" in msg or "[" in msg or "]" in msg or "{" in msg or "}" in msg:
-                return f"**Line {line}**: `{snippet}`\n\nA bracket `(`, `[`, or `{{` was opened but never closed. Brackets always work in pairs — like two hands clapping.\n\n**Fix:** Find where the bracket was opened and add the matching closing bracket."
+                return explain(
+                    "A string (text inside quotes) was started but never finished. Every opening quote needs a matching closing quote, like a pair of bookends.",
+                    "Add the matching closing quote at the end of the string."
+                )
+            return explain(
+                "A bracket (, [, or { was opened but never closed. Brackets always work in pairs, like two hands clapping.",
+                "Find where the bracket was opened and add the matching closing bracket."
+            )
 
-    # --- Named error types ---
     if "ZeroDivisionError" in etype or "Division" in etype:
-        snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
-        return f"**Line {line}**: `{snippet}`\n\nDividing by zero crashes your program. Think of sharing 10 cookies with 0 friends — it's impossible!\n\n**Fix:** Before dividing, check if the value is not zero: `if count != 0:`"
+        return explain(
+            "Dividing by zero crashes your program. Think of sharing 10 cookies with 0 friends. It is impossible!",
+            "Before dividing, check if the value is not zero: if count != 0:"
+        )
 
     if "InfiniteLoopError" in etype:
-        snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
-        return f"**Line {line}**: `{snippet}`\n\nThis loop never stops! A `while True:` loop runs forever unless something tells it to stop. Like a song on repeat with no stop button.\n\n**Fix:** Add a `break` statement inside the loop."
+        return explain(
+            "This loop never stops. A while True: loop runs forever unless something tells it to stop. Like a song on repeat with no stop button.",
+            "Add a break statement inside the loop."
+        )
 
     if "MissingWHERE" in etype:
-        return f"**Line {line}**: `{code_line}`\n\nWithout a `WHERE` clause, your UPDATE or DELETE applies to **every row** in the table. Like sending a \"delete all emails\" command when you only meant to delete one.\n\n**Fix:** Always add `WHERE column_name = value`."
+        return explain(
+            "Without a WHERE clause, your UPDATE or DELETE applies to every row in the table. Like sending a delete all emails command when you only meant to delete one.",
+            "Always add WHERE column_name = value."
+        )
 
     if "MissingSemicolon" in etype or "missing semicolon" in msg.lower():
-        return f"**Line {line}**: `{code_line}`\n\nEvery statement must end with `;`. It's like a period at the end of a sentence — it tells the compiler \"this instruction is complete.\"\n\n**Fix:** Add `;` at the end of the line."
+        return explain(
+            "Every statement must end with ;. It is like a period at the end of a sentence. It tells the compiler this instruction is complete.",
+            "Add ; at the end of the line."
+        )
 
     if "TypeMismatch" in etype:
         if "printf" in msg:
-            return f"**Line {line}**: `{code_line}`\n\nIn `printf`, you use `%d`, `%f`, `%c` etc. to **print values**. Adding `&` gives the variable's memory address instead of its value — like giving someone your house address when they asked for your phone number.\n\n**Fix:** Remove the `&` — just use the variable name directly."
+            return explain(
+                "In printf, you use %d, %f, %c to print values. Adding & gives the variables memory address instead of its value. Like giving someone your house address when they asked for your phone number.",
+                "Remove the & and just use the variable name directly."
+            )
         if "scanf" in msg:
-            return f"**Line {line}**: `{code_line}`\n\nIn `scanf`, you need `&` because `scanf` **writes** a value into your variable. It needs to know where the variable lives in memory — like telling a delivery driver your address so they know where to drop the package.\n\n**Fix:** Add `&` before the variable name."
+            return explain(
+                "In scanf, you need & because scanf writes a value into your variable. It needs to know where the variable lives in memory. Like telling a delivery driver your address so they know where to drop the package.",
+                "Add & before the variable name."
+            )
 
     if "AssignmentInCondition" in etype:
-        return f"**Line {line}**: `{code_line}`\n\nYou used `=` (single equals) inside a condition. In programming, `=` means \"assign\" (store a value), while `==` means \"compare\" (check if two things are equal). Using `=` here accidentally changes the variable instead of checking it!\n\n**Fix:** Replace `=` with `==`."
+        return explain(
+            "You used = (single equals) inside a condition. In programming, = means assign (store a value), while == means compare (check if two things are equal). Using = here accidentally changes the variable instead of checking it.",
+            "Replace = with ==."
+        )
 
     if "NameError" in etype:
-        snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
-        return f"**Line {line}**: `{snippet}`\n\nPython can't find this variable. It's like calling someone by the wrong name — Python doesn't know what you mean. You might have a typo in the variable name.\n\n**Fix:** Check the spelling and make sure you defined the variable before using it."
+        return explain(
+            "Python cannot find this variable. It is like calling someone by the wrong name. Python does not know what you mean. You might have a typo in the variable name.",
+            "Check the spelling and make sure you defined the variable before using it."
+        )
 
     if "BareExcept" in etype:
-        return f"**Line {line}**: `{code_line}`\n\nA bare `except:` catches every possible error, including things like Ctrl+C that should stop your program. It's like a butterfly net that catches butterflies AND grenades.\n\n**Fix:** Use `except Exception:` to catch normal errors safely."
+        return explain(
+            "A bare except: catches every possible error, including things like Ctrl+C that should stop your program. It is like a butterfly net that catches butterflies and grenades.",
+            "Use except Exception: to catch normal errors safely."
+        )
 
     if "LooseEquality" in etype:
-        return f"**Line {line}**: `{code_line}`\n\nUsing `==` in JavaScript can give surprising results. For example, `0 == false` is `true` and `'' == 0` is `true`. That's because `==` converts types before comparing. Use `===` to check both value AND type.\n\n**Fix:** Replace `==` with `===`."
+        return explain(
+            "Using == in JavaScript can give surprising results. For example, 0 == false is true and empty string == 0 is true. That is because == converts types before comparing. Use === to check both value and type.",
+            "Replace == with ===."
+        )
 
     if "MissingRadix" in etype:
-        return f"**Line {line}**: `{code_line}`\n\n`parseInt()` without a second argument can guess the wrong number base. For example, `parseInt('08')` might give 0 (treating it as octal). Always specify base 10 for normal numbers.\n\n**Fix:** Use `parseInt(x, 10)`."
+        return explain(
+            "parseInt() without a second argument can guess the wrong number base. For example, parseInt('08') might give 0 by treating it as octal. Always specify base 10 for normal numbers.",
+            "Use parseInt(x, 10)."
+        )
 
     if "MainReturnType" in etype:
-        return f"**Line {line}**: `{code_line}`\n\n`void main()` is not standard C. The `int` in `int main()` lets your program tell the OS whether it succeeded (return 0) or failed (return 1).\n\n**Fix:** Change `void main()` to `int main()` and add `return 0;` at the end."
+        if "needs a return type" in msg:
+            return explain(
+                "main() without a return type is not standard C. Every function needs a return type. int main() tells the OS your program ran successfully (return 0) or had an error (return 1).",
+                "Change main() to int main() and add return 0; at the end."
+            )
+        return explain(
+            "void main() is not standard C. The int in int main() lets your program tell the OS whether it succeeded (return 0) or failed (return 1).",
+            "Change void main() to int main() and add return 0; at the end."
+        )
 
     if "NullComparison" in etype:
-        return f"**Line {line}**: `{code_line}`\n\nIn SQL, `= NULL` doesn't work because NULL means \"unknown\" — and nothing equals an unknown value. Use `IS NULL` instead.\n\n**Fix:** Replace `= NULL` with `IS NULL`."
+        return explain(
+            "In SQL, = NULL does not work because NULL means unknown. Nothing equals an unknown value, not even NULL itself. Use IS NULL instead.",
+            "Replace = NULL with IS NULL."
+        )
 
     if "MissingDoctype" in etype:
-        return f"**Line {line}**: `{code_line}`\n\nWithout `<!DOCTYPE html>`, older browsers switch to \"quirks mode\" and may display your page incorrectly. It's like telling the browser which rulebook to follow.\n\n**Fix:** Add `<!DOCTYPE html>` as the very first line."
+        return explain(
+            "Without <!DOCTYPE html>, older browsers switch to quirks mode and may display your page incorrectly. It is like telling the browser which rulebook to follow.",
+            "Add <!DOCTYPE html> as the very first line."
+        )
 
-    return f"**Line {line}**: {msg}"
+    if "SyntaxError" in etype and "was opened but never closed" in msg:
+        snippet = code_line[:40] + "..." if len(code_line) > 40 else code_line
+        return explain(
+            f"An HTML tag was opened but never closed. Every opening tag like <tag> needs a matching closing tag like </tag>. Think of them as a pair of bookends for your content.",
+            "Find where the tag was opened and add the matching closing tag."
+        )
+
+    return f"Line {line}: {msg}"
 
 # ---------------------------------------------------------------------------
 # GENERAL ANALYSIS
@@ -284,7 +359,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         except SyntaxError as e:
             err_line = e.lineno or 1
             if not any(e["line"] == err_line and "SyntaxError" in e["type"] for e in errors):
-                msg = f"Line {err_line}: {e.msg}. "
+                msg = f"{e.msg}. "
                 if "expected ':'" in e.msg:
                     msg += "Add a colon at the end of this line."
                 elif "unterminated" in e.msg.lower():
@@ -432,6 +507,14 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                             "line": line_num, "type": "AssignmentInCondition",
                             "message": f"Line {line_num}: You used `=` (assignment) in a condition. Did you mean `==` (comparison)? A single `=` **assigns** a value, `==` **checks** if things are equal."
                         })
+                none_cmp = re.search(r'(==|!=)\s*None\b', parens)
+                if none_cmp:
+                    op = none_cmp.group(1)
+                    replacement = "is" if op == "==" else "is not"
+                    suggestions.append({
+                        "line": line_num, "title": "Use 'is' for None comparison",
+                        "message": f"Line {line_num}: Use `{replacement} None` instead of `{op} None`. In Python, `None` is a special singleton — use `is`/`is not` to check for it."
+                    })
 
     # ------------------------------------------------------------------
     # JS / TS
@@ -657,7 +740,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                     "line": line_num, "type": "MissingSemicolon",
                                     "message": f"Line {line_num}: Missing `;`. In {language}, every statement ends with a semicolon — like a period at the end of a sentence."
                                 })
-                    fixes.setdefault(line_num, []).append(("append", ";"))
+                                fixes.setdefault(line_num, []).append(("append", ";"))
 
         if lang == "c":
             for idx, line in enumerate(lines):
@@ -678,6 +761,12 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         "message": f"Line {line_num}: `void main()` is not standard C. Use `int main()` — the `int` tells the OS your program ran successfully (return 0) or had an error (return 1)."
                     })
                     fixes.setdefault(line_num, []).append(("replace", line, line.replace("void main", "int main", 1)))
+                if re.match(r'^main\s*\(', stripped) and not stripped.startswith("int") and not stripped.startswith("void"):
+                    errors.append({
+                        "line": line_num, "type": "MainReturnType",
+                        "message": f"Line {line_num}: `main()` needs a return type. Use `int main()` — the `int` tells the OS your program ran successfully (return 0) or had an error (return 1)."
+                    })
+                    fixes.setdefault(line_num, []).append(("replace", line, line.replace("main()", "int main()", 1)))
 
             for idx, line in enumerate(lines):
                 line_num = idx + 1
@@ -731,6 +820,37 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     "line": line_num, "title": "Self-Closing Tag",
                     "message": f"Line {line_num}: `<{stripped.strip('<>')}>` doesn't need a closing tag."
                 })
+        # Track HTML tags for unclosed detection
+        void_tags = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+        tag_stack = []
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            for m in re.finditer(r'</?(\w+)[^>]*>', line):
+                tag = m.group(1).lower()
+                if tag in void_tags:
+                    continue
+                if m.group().startswith('</'):
+                    if tag_stack and tag_stack[-1][0] == tag:
+                        tag_stack.pop()
+                    else:
+                        # closing tag doesn't match top — record intervening tags as unclosed
+                        for si in range(len(tag_stack) - 1, -1, -1):
+                            if tag_stack[si][0] == tag:
+                                # mark everything between si and end as unclosed
+                                for doomed in range(si + 1, len(tag_stack)):
+                                    errors.append({
+                                        "line": tag_stack[doomed][1], "type": "SyntaxError",
+                                        "message": f"Line {tag_stack[doomed][1]}: `<{tag_stack[doomed][0]}>` was opened but never closed with `</{tag_stack[doomed][0]}>`. Every HTML tag needs a matching closing tag."
+                                    })
+                                tag_stack = tag_stack[:si]
+                                break
+                else:
+                    tag_stack.append((tag, line_num))
+        for tag, ln in tag_stack:
+            errors.append({
+                "line": ln, "type": "SyntaxError",
+                "message": f"Line {ln}: `<{tag}>` was opened but never closed with `</{tag}>`. Every HTML tag needs a matching closing tag."
+            })
         if not any("<!DOCTYPE" in l for l in lines):
             if re.search(r'<html', code, re.I):
                 errors.append({
@@ -797,33 +917,35 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
     display_lines = fixed_lines if errors else lines
     if mode.lower() == "beginner":
         if errors:
-            explanation = "### What went wrong\n\nYour code has some bugs. Think of code like a recipe — if a step is wrong, the dish won't come out right!\n\n"
-            for err in errors:
-                explanation += _get_error_explanation(err, lines, lang) + "\n\n---\n\n"
+            explanation = "Your code has some bugs. Think of code like a recipe. If a step is wrong, the dish will not come out right!\n\n"
+            for i, err in enumerate(errors):
+                if i > 0:
+                    explanation += "\n"
+                explanation += _get_error_explanation(err, lines, lang) + "\n"
         else:
-            explanation = "### Looking good!\n\nYour code runs without crashes. Check the Suggestions tab for tips to make it cleaner.\n\n"
+            explanation = "Your code looks good! Check the Suggestions tab for tips to make it cleaner.\n"
 
-        explanation += "### What each line does\n"
+        explanation += "\nWhat each line does:\n"
         for idx, line in enumerate(display_lines[:8]):
             first_line = line.strip().split("\n")[0][:60]
             if first_line:
-                explanation += f"  {idx+1}. `{first_line}`\n"
+                explanation += f"  Line {idx+1}: {first_line}\n"
         if len(display_lines) > 8:
             explanation += f"  ... and {len(display_lines)} lines total\n"
     else:
         if errors:
-            explanation = f"### Issues Detected\n\n{len(errors)} error(s) found.\n\n"
+            explanation = f"Issues Detected: {len(errors)} error(s) found.\n\n"
             for err in errors:
-                explanation += f"- **L{err['line']}** — {err['type']}: {err['message']}\n"
+                explanation += f"  L{err['line']} - {err['type']}: {err['message']}\n"
         else:
-            explanation = "### Assessment\n\nNo critical issues detected.\n"
-        explanation += "\n### Code Flow\n"
+            explanation = "No critical issues detected.\n"
+        explanation += "\nCode flow:\n"
         for idx, line in enumerate(display_lines[:5]):
             first_line = line.strip().split("\n")[0][:60]
             if first_line:
-                explanation += f"- **L{idx+1}**: `{first_line}`\n"
+                explanation += f"  L{idx+1}: {first_line}\n"
         if len(display_lines) > 5:
-            explanation += f"- ... and {len(display_lines)-5} more lines.\n"
+            explanation += f"  ... and {len(display_lines)-5} more lines.\n"
 
     return {
         "errors": errors,
