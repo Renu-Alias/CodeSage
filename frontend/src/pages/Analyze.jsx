@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Play, Copy, Check, Terminal, AlertCircle, Sparkles, FileText, ChevronRight } from 'lucide-react';
+import { Upload, Play, Copy, Check, Terminal, AlertCircle, Sparkles, FileText, ChevronRight, BarChart3, Cpu, HardDrive, Zap, Code2, Layers } from 'lucide-react';
 import { LANGUAGES, extToLanguage, acceptExtensions } from '../constants/languages';
 
 const DEFAULT_SNIPPETS = {
@@ -194,6 +194,7 @@ export default function Analyze({ sampleCode, setSampleCode }) {
   const [suggestions, setSuggestions] = useState([]);
   const [explanation, setExplanation] = useState("### Ready to analyze\n\nPaste your code and click **Analyze** to get started.");
   const [fixedCode, setFixedCode] = useState("");
+  const [analysisMetrics, setAnalysisMetrics] = useState(null);
 
   // Sync if sampleCode changes from homepage click
   useEffect(() => {
@@ -256,6 +257,7 @@ export default function Analyze({ sampleCode, setSampleCode }) {
         setSuggestions(analysis.suggestions);
         setExplanation(analysis.explanation);
         setFixedCode(analysis.fixed_code);
+        setAnalysisMetrics(analysis.analysis_metrics || null);
         setSaved(true);
       } else if (response.status === 500) {
         const errData = await response.json();
@@ -263,6 +265,7 @@ export default function Analyze({ sampleCode, setSampleCode }) {
         setSuggestions([]);
         setExplanation("### Server Error\n\nThe backend encountered an error processing your code. Make sure the backend server is running on port 8000.");
         setFixedCode("");
+        setAnalysisMetrics(null);
       } else {
         throw new Error("Backend response error");
       }
@@ -271,6 +274,7 @@ export default function Analyze({ sampleCode, setSampleCode }) {
       setSuggestions([]);
       setExplanation("### Backend Offline\n\nStart the backend with:\n```bash\ncd backend\npython -m app.main\n```");
       setFixedCode("");
+      setAnalysisMetrics(null);
     } finally {
       setLoading(false);
     }
@@ -329,6 +333,7 @@ export default function Analyze({ sampleCode, setSampleCode }) {
                   setSuggestions([]);
                   setExplanation(`### Ready to analyze\nPaste your ${newLang} code and click Analyze to get started.`);
                   setFixedCode('');
+                  setAnalysisMetrics(null);
                 }}
               >
                 {LANGUAGES.map(lang => (
@@ -428,6 +433,12 @@ export default function Analyze({ sampleCode, setSampleCode }) {
             >
               <span className="tab-bullet fixed-bullet" /> Fixed code
             </button>
+            <button 
+              className={`report-tab-btn ${activeTab === 'analysis' ? 'active' : ''}`}
+              onClick={() => setActiveTab('analysis')}
+            >
+              <BarChart3 size={14} /> Analysis
+            </button>
           </div>
 
           {/* Active Tab Panel Content */}
@@ -512,6 +523,72 @@ export default function Analyze({ sampleCode, setSampleCode }) {
             {activeTab === 'fixed' && (
               <div className="fixed-code-panel animate-fade">
                 {renderFixedDiff()}
+              </div>
+            )}
+
+            {/* 5. ANALYSIS PANEL */}
+            {activeTab === 'analysis' && (
+              <div className="analysis-panel animate-fade">
+                {!analysisMetrics ? (
+                  <div className="empty-panel-state">
+                    <BarChart3 size={36} color="var(--text-light)" />
+                    <h3>No analysis data</h3>
+                    <p>Run an analysis first to see complexity and efficiency metrics.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="analysis-metrics-grid">
+                      <div className="analysis-card">
+                        <div className="analysis-card-icon time-icon"><Zap size={20} /></div>
+                        <div className="analysis-card-body">
+                          <span className="analysis-label">Time Complexity</span>
+                          <span className="analysis-value">{analysisMetrics.time_complexity}</span>
+                          <span className="analysis-desc">{analysisMetrics.time_description}</span>
+                        </div>
+                      </div>
+                      <div className="analysis-card">
+                        <div className="analysis-card-icon space-icon"><HardDrive size={20} /></div>
+                        <div className="analysis-card-body">
+                          <span className="analysis-label">Space Complexity</span>
+                          <span className="analysis-value">{analysisMetrics.space_complexity}</span>
+                          <span className="analysis-desc">{analysisMetrics.space_description}</span>
+                        </div>
+                      </div>
+                      <div className="analysis-card">
+                        <div className="analysis-card-icon eff-icon"><Cpu size={20} /></div>
+                        <div className="analysis-card-body">
+                          <span className="analysis-label">Efficiency</span>
+                          <span className="analysis-value">{analysisMetrics.efficiency}</span>
+                          <div className="analysis-score-bar">
+                            <div className="analysis-score-fill" style={{ width: `${analysisMetrics.efficiency_score}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="analysis-card">
+                        <div className="analysis-card-icon code-icon"><Code2 size={20} /></div>
+                        <div className="analysis-card-body">
+                          <span className="analysis-label">Lines of Code</span>
+                          <span className="analysis-value">{analysisMetrics.lines_of_code}</span>
+                          <span className="analysis-desc">{analysisMetrics.total_lines} total lines (including comments)</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="analysis-detail-row">
+                      <div className="analysis-detail-item">
+                        <Layers size={14} />
+                        <span>Loops: <strong>{analysisMetrics.loop_count}</strong> (max depth: {analysisMetrics.max_loop_depth})</span>
+                      </div>
+                      <div className="analysis-detail-item">
+                        <FileText size={14} />
+                        <span>Functions: <strong>{analysisMetrics.function_count}</strong></span>
+                      </div>
+                      <div className="analysis-detail-item">
+                        <Terminal size={14} />
+                        <span>Cyclomatic complexity: <strong>{analysisMetrics.cyclomatic_complexity}</strong></span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

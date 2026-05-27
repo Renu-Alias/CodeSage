@@ -50,7 +50,7 @@ def get_calculate_average_analysis(mode: str) -> dict:
         "    total = sum(numbers)\n"
         "    return total / len(numbers)"
     )
-    return {"errors": errors, "suggestions": suggestions, "explanation": explanation, "fixed_code": fixed_code}
+    return {"errors": errors, "suggestions": suggestions, "explanation": explanation, "fixed_code": fixed_code, "analysis_metrics": analyze_complexity(DEMO_AVERAGE, "Python")}
 
 def get_loop_price_analysis(mode: str) -> dict:
     errors = [
@@ -79,7 +79,7 @@ def get_loop_price_analysis(mode: str) -> dict:
         "        total += price + tax\n"
         "    return total"
     )
-    return {"errors": errors, "suggestions": suggestions, "explanation": explanation, "fixed_code": fixed_code}
+    return {"errors": errors, "suggestions": suggestions, "explanation": explanation, "fixed_code": fixed_code, "analysis_metrics": analyze_complexity(DEMO_LOOP, "Python")}
 
 # ---------------------------------------------------------------------------
 # HELPERS
@@ -300,6 +300,154 @@ def _get_error_explanation(err, code_lines, lang):
         )
 
     return f"Line {line}: {msg}"
+
+# ---------------------------------------------------------------------------
+# COMPLEXITY ANALYSIS
+# ---------------------------------------------------------------------------
+
+def analyze_complexity(code: str, language: str) -> dict:
+    lines = code.split("\n")
+    lang = language.lower()
+
+    # Count loops (for, while) to estimate time complexity
+    loop_depth = 0
+    max_loop_depth = 0
+    loop_keywords = []
+    if lang in ("python",):
+        loop_keywords = ["for ", "while "]
+    elif lang in ("javascript", "typescript"):
+        loop_keywords = ["for(", "for (", "while(", "while ("]
+    elif lang in ("c", "c++", "java", "c#", "dart", "kotlin", "go", "rust", "swift"):
+        loop_keywords = ["for(", "for (", "while(", "while ("]
+    else:
+        loop_keywords = ["for", "while"]
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("--"):
+            continue
+        stripped_lower = stripped.lower()
+        is_loop = any(stripped_lower.startswith(kw.lower()) or kw.lower() in stripped_lower.split("(")[0].split(" ")[-1] for kw in loop_keywords if kw)
+
+        # Improved detection: check for 'for' or 'while' at start of meaningful code
+        kw_found = None
+        for kw in loop_keywords:
+            idx = stripped_lower.find(kw.lower())
+            if idx >= 0:
+                # Check if this is a loop keyword (not 'for' in 'before')
+                before = stripped_lower[:idx].strip()
+                if not before or before in ("}", ");", ")", "{", ":", ";", "else"):
+                    if not (kw.lower() == "for" and "form" in stripped_lower[:idx+5]):
+                        kw_found = kw
+                        break
+
+        if kw_found:
+            loop_depth += 1
+            max_loop_depth = max(max_loop_depth, loop_depth)
+        else:
+            # Check for closing braces/brackets that decrease indent
+            if stripped in ("}", "});", "})"):
+                loop_depth = max(0, loop_depth - 1)
+
+    # Simpler approach: count nested indentation with loop keywords
+    loop_depth = 0
+    max_loop_depth = 0
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("--"):
+            continue
+        stripped_lower = stripped.lower()
+        is_loop_line = False
+        for kw in loop_keywords:
+            if kw.lower() in stripped_lower and stripped_lower.startswith(kw.lower()[:3]) or stripped_lower.lstrip().startswith(kw.lower()[:3]):
+                # crude check: word boundary
+                if re.search(r'\b' + re.escape(kw.strip(" (")) + r'\b', stripped_lower):
+                    is_loop_line = True
+                    break
+        if is_loop_line:
+            loop_depth += 1
+            max_loop_depth = max(max_loop_depth, loop_depth)
+        elif stripped in ("}", "});", ")", "];"):
+            loop_depth = max(0, loop_depth - 1)
+
+    # Fallback: simple loop counting
+    loop_count = 0
+    for line in lines:
+        s = line.strip().lower()
+        if any(kw.strip(" (").lower() in s.split() or s.startswith(kw.strip(" (").lower()) for kw in loop_keywords):
+            loop_count += 1
+
+    max_depth = max_loop_depth if max_loop_depth > 0 else (1 if loop_count > 0 else 0)
+
+    if max_depth == 0:
+        time_complexity = "O(1)"
+        time_desc = "Constant time — no loops, runs in the same time regardless of input size."
+        efficiency = "Excellent"
+        efficiency_score = 95
+    elif max_depth == 1:
+        time_complexity = "O(n)"
+        time_desc = "Linear time — one loop, time grows proportionally with input size."
+        efficiency = "Good"
+        efficiency_score = 80
+    elif max_depth == 2:
+        time_complexity = "O(n²)"
+        time_desc = "Quadratic time — nested loops, time grows with the square of input size."
+        efficiency = "Fair"
+        efficiency_score = 60
+    elif max_depth >= 3:
+        time_complexity = "O(n³) or worse"
+        time_desc = "Cubic or higher — deeply nested loops may become slow with large inputs."
+        efficiency = "Needs improvement"
+        efficiency_score = 40
+
+    # Space complexity estimate based on data structures
+    space_complexity = "O(1)"
+    space_desc = "Constant space — uses a fixed amount of memory."
+    has_array = False
+    has_dict = False
+    has_recursion = False
+    for line in lines:
+        s = line.strip()
+        if any(kw in s for kw in ["[", "list(", "List<", "vector", "ArrayList", "new ", "malloc", "alloc"]):
+            has_array = True
+        if any(kw in s for kw in ["{", "dict(", "Map<", "HashMap", "Dictionary", "object"]):
+            has_dict = True
+        # Check for function calls (potential recursion)
+    # Count function definitions
+    func_count = 0
+    for line in lines:
+        s = line.strip()
+        if any(s.startswith(kw) for kw in ["def ", "function ", "int main", "void main", "public static", "fn "]):
+            func_count += 1
+
+    if has_array and has_dict:
+        space_complexity = "O(n)"
+        space_desc = "Linear space — memory grows with input size (arrays and dictionaries)."
+    elif has_array or has_dict:
+        space_complexity = "O(n)"
+        space_desc = "Linear space — memory usage scales with input."
+    elif func_count >= 2:
+        space_complexity = "O(1)"
+        space_desc = "Constant space — functions don't store significant additional data."
+
+    loc = len([l for l in lines if l.strip() and not l.strip().startswith("#") and not l.strip().startswith("//") and not l.strip().startswith("/*") and not l.strip().startswith("--")])
+    total_lines = len(lines)
+    cyclomatic = max(1, func_count + loop_count)
+
+    return {
+        "time_complexity": time_complexity,
+        "time_description": time_desc,
+        "space_complexity": space_complexity,
+        "space_description": space_desc,
+        "efficiency": efficiency,
+        "efficiency_score": efficiency_score,
+        "lines_of_code": loc,
+        "total_lines": total_lines,
+        "loop_count": loop_count,
+        "max_loop_depth": max_depth,
+        "function_count": func_count,
+        "cyclomatic_complexity": cyclomatic
+    }
 
 # ---------------------------------------------------------------------------
 # GENERAL ANALYSIS
@@ -947,9 +1095,12 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         if len(display_lines) > 5:
             explanation += f"  ... and {len(display_lines)-5} more lines.\n"
 
+    complexity = analyze_complexity(code, language)
+
     return {
         "errors": errors,
         "suggestions": suggestions,
         "explanation": explanation,
-        "fixed_code": fixed_code
+        "fixed_code": fixed_code,
+        "analysis_metrics": complexity
     }

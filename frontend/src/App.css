@@ -2650,4 +2650,55 @@ body.dark-mode .exercise-explanation { background: #252540; }
 body.dark-mode .demo-modal { background: #1e1e32; color: var(--text-dark); }
 body.dark-mode .badge-weakness { background: #3a2a10; color: #ffb74d; }
 
+/* ----------------------------------------------------
+   ANALYSIS TAB
+---------------------------------------------------- */
+.analysis-panel { padding: 8px 0; }
+.analysis-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.analysis-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  background: #f8f8ff;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.analysis-card-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.time-icon { background: #e3f2fd; color: #1565c0; }
+.space-icon { background: #f3e5f5; color: #7b1fa2; }
+.eff-icon { background: #e8f5e9; color: #2e7d32; }
+.code-icon { background: #fff3e0; color: #e65100; }
+.analysis-card-body { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.analysis-label { font-size: 11px; color: var(--text-medium); text-transform: uppercase; letter-spacing: 0.5px; }
+.analysis-value { font-size: 18px; font-weight: 700; color: var(--text-dark); }
+.analysis-desc { font-size: 11px; color: var(--text-medium); line-height: 1.4; }
+.analysis-score-bar {
+  height: 6px; background: #e0e0e0; border-radius: 4px;
+  margin-top: 6px; overflow: hidden;
+}
+.analysis-score-fill { height: 100%; background: var(--primary); border-radius: 4px; transition: width 0.3s; }
+.analysis-detail-row {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  padding: 12px 16px; background: #fafafa;
+  border-radius: 10px; font-size: 13px; color: var(--text-medium);
+}
+.analysis-detail-item { display: flex; align-items: center; gap: 6px; }
+.analysis-detail-item strong { color: var(--text-dark); }
+body.dark-mode .analysis-card { background: #252540; border-color: var(--border); }
+body.dark-mode .analysis-detail-row { background: #1e1e32; }
+body.dark-mode .time-icon { background: #1a2a40; color: #64b5f6; }
+body.dark-mode .space-icon { background: #2a1a40; color: #ce93d8; }
+body.dark-mode .eff-icon { background: #1a3a1a; color: #81c784; }
+body.dark-mode .code-icon { background: #3a2a10; color: #ffb74d; }
+
 
