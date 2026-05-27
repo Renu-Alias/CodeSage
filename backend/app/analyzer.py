@@ -151,6 +151,24 @@ def _edit_distance(a, b):
             prev = temp
     return dp[n]
 
+def _strip_c_line(line):
+    """Remove C-style trailing comments from a line for syntax checking."""
+    s = re.sub(r'/\*.*?\*/', '', line)
+    idx = s.find('//')
+    if idx >= 0:
+        in_str = False
+        for i in range(idx):
+            if s[i] == '"' and (i == 0 or s[i-1] != '\\'):
+                in_str = not in_str
+        if not in_str:
+            s = s[:idx]
+    return s.strip()
+
+def _last_code_char(line):
+    """Return the last non-comment, non-whitespace character of a line of C code."""
+    code = _strip_c_line(line)
+    return code[-1] if code else ''
+
 def _get_error_explanation(err, code_lines, lang):
     """Generate a short beginner-friendly explanation snippet for a single error."""
     line = err.get("line", 1)
@@ -297,6 +315,36 @@ def _get_error_explanation(err, code_lines, lang):
         return explain(
             f"An HTML tag was opened but never closed. Every opening tag like <tag> needs a matching closing tag like </tag>. Think of them as a pair of bookends for your content.",
             "Find where the tag was opened and add the matching closing tag."
+        )
+
+    if "InvalidFree" in etype:
+        return explain(
+            "You called free() on a variable that was not allocated with malloc/calloc. free() is for releasing heap memory. If you use it on a stack variable (like a local array), the program crashes because stack memory is managed automatically — like trying to return a rental car you never rented.",
+            "Remove the free() call for stack variables. Only free() memory that came from malloc()."
+        )
+
+    if "ReturnLocalAddress" in etype:
+        return explain(
+            "You returned the address of a local (stack) variable. When a function ends, its local variables are destroyed and their memory is recycled. The pointer you returned now points to invalid memory — like giving someone a map to a house that gets demolished as they walk away.",
+            "Either make the variable static, allocate it with malloc() and return the pointer, or pass a buffer as a parameter."
+        )
+
+    if "UseAfterFree" in etype:
+        return explain(
+            "You are using memory after it has been freed. Once you call free(ptr), the memory is returned to the system. Accessing it afterward is undefined behavior — the data may be corrupted or gone. Like trying to read pages of a book you already put through a shredder.",
+            "Do not access the pointer after freeing it. If you need it later, defer the free() call or set the pointer to NULL and check for NULL before use."
+        )
+
+    if "OffByOne" in etype:
+        return explain(
+            "Your loop uses <= (less-than-or-equal) where it should use < (less-than). This runs the loop one extra time, accessing the array element right past its end. Array indices go from 0 to size-1. If size is 8, valid indices are 0 to 7 — index 8 is out of bounds.",
+            "Change `<=` to `<` to stay within valid bounds."
+        )
+
+    if "BufferOverflow" in etype:
+        return explain(
+            "You are writing past the end of an allocated buffer. The buffer has space for a certain number of elements, but your code writes beyond that limit. This corrupts adjacent memory and can crash or create security vulnerabilities.",
+            "Either increase the allocation size or reduce the number of writes."
         )
 
     return f"Line {line}: {msg}"
@@ -867,16 +915,17 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             line_num = idx + 1
             stripped = line.strip()
             if not stripped or stripped.startswith("//") or stripped.startswith("/*"): continue
+            last_ch = _last_code_char(line)
             type_kws = ["int ", "float ", "double ", "char ", "String ", "bool ", "void "]
             if any(stripped.startswith(kw) for kw in type_kws):
-                if not stripped.endswith(";") and not stripped.endswith("{") and not stripped.endswith("}") and not stripped.endswith("("):
+                if last_ch not in (';', '{', '}'):
                     errors.append({
                         "line": line_num, "type": "MissingSemicolon",
                         "message": f"Line {line_num}: Missing `;`. In {language}, every statement ends with a semicolon — like a period at the end of a sentence."
                     })
                     fixes.setdefault(line_num, []).append(("append", ";"))
             if not stripped.startswith("#") and not stripped.startswith("//") and not stripped.startswith("/*"):
-                if not stripped.endswith(";") and not stripped.endswith("{") and not stripped.endswith("}") and not stripped.endswith("("):
+                if last_ch not in (';', '{', '}', '('):
                     if '{' in stripped: continue
                     ctrl_kws = r'^\s*(if|for|while|switch|else|case|default|do)\b'
                     if not re.match(ctrl_kws, stripped):
@@ -931,6 +980,219 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                     "line": line_num, "type": "AssignmentInCondition",
                                     "message": f"Line {line_num}: You used `=` (assignment) in a condition. Did you mean `==` (comparison)? A single `=` **assigns** a value, `==` **checks** if values are equal."
                                 })
+
+            if lang in ("c", "c++"):
+                # ------------------------------------------------------------------
+                # MEMORY / POINTER ANALYSIS (C/C++)
+                # ------------------------------------------------------------------
+                # Pass 1: collect variable info across all lines
+                stack_vars = {}        # name -> line_num  (local array/stack variables)
+                malloc_vars = {}       # name -> (line_num, size_expr)
+                freed_vars = set()     # names that have been freed
+                fn_params = set()      # function parameter names (pointer params)
+                used_after_free = set()
+                func_bodies = {}       # fn_name -> (start_brace_line, end_brace_line)
+                brace_depth = 0
+                current_fn = None
+                fn_start = {}
+
+                for idx, line in enumerate(lines):
+                    line_num = idx + 1
+                    stripped = line.strip()
+
+                    # Track function definitions
+                    fn_def = re.match(r'^(?:\w+\s+)*(\*?\s*\w+)\s*\([^)]*\)\s*\{?\s*(?://.*)?$', stripped)
+                    if fn_def and not stripped.startswith('if') and not stripped.startswith('while') and not stripped.startswith('for') and not stripped.startswith('return') and not stripped.startswith('//') and not stripped.startswith('/*'):
+                        current_fn = fn_def.group(1).strip('*').strip()
+                        fn_start[current_fn] = line_num
+                        # Extract pointer parameters
+                        params_str = re.search(r'\(([^)]*)\)', stripped)
+                        if params_str:
+                            for param in params_str.group(1).split(','):
+                                p = param.strip()
+                                # Match pointer params like "int *arr" or "int* arr"
+                                ptr_param = re.match(r'(?:\w+\s+)*\*+\s*(\w+)\s*(?:\[[^\]]*\])?$', p)
+                                if ptr_param:
+                                    fn_params.add(ptr_param.group(1).strip('*').strip())
+                                # Also capture name for non-pointer params
+                                plain_param = re.match(r'(?:\w+\s+)+(\w+)\s*$', p)
+                                if plain_param:
+                                    pname = plain_param.group(1)
+                                    # Don't add to fn_params for non-pointer params
+
+                    # Track braces for function boundaries
+                    for ch in line:
+                        if ch == '{':
+                            if current_fn and brace_depth == 0:
+                                func_bodies[current_fn] = [line_num, None]
+                            brace_depth += 1
+                        elif ch == '}':
+                            brace_depth = max(0, brace_depth - 1)
+                            if brace_depth == 0 and current_fn:
+                                if current_fn in func_bodies and func_bodies[current_fn][1] is None:
+                                    func_bodies[current_fn][1] = line_num
+                                current_fn = None
+
+                    # Detect stack array declarations: int name[size];
+                    stack_match = re.match(r'^\s*(?:(?:unsigned|const|static|volatile)\s+)*(?:\w+\s+\**\s*)?(\w+)\s*\[\s*[^\]]+\s*\]\s*;', stripped)
+                    if stack_match:
+                        vname = stack_match.group(1)
+                        # Exclude pointer parameters like int *arr[]
+                        if not stripped.startswith('*') and ')' not in stripped[:stripped.find(vname)]:
+                            stack_vars[vname] = line_num
+
+                    # Detect simple local variables (non-pointer, non-array) inside functions
+                    # Like: int x; char buffer[32];
+                    local_arr = re.match(r'^\s*(?:\w+\s+)+(\w+)\s*\[\s*\d+\s*\]\s*;', stripped)
+                    if local_arr:
+                        vname = local_arr.group(1)
+                        stack_vars[vname] = line_num
+
+                    # Detect malloc/calloc/realloc: ptr = malloc(...)
+                    malloc_match = re.search(r'(\w+)\s*=\s*(?:\(\s*\w+\s*\*?\s*\)\s*)?(malloc|calloc|realloc)\s*\(', stripped)
+                    if malloc_match:
+                        vname = malloc_match.group(1)
+                        if vname not in stack_vars:
+                            malloc_vars[vname] = (line_num, stripped)
+
+                    # Detect *ptr = malloc(...) type declaration: int *ptr = malloc(...)
+                    malloc_decl = re.match(r'^\s*(?:\w+\s+)*\*?\s*(\w+)\s*=\s*(?:\(\s*\w+\s*\*?\s*\)\s*)?(malloc|calloc|realloc)\s*\(', stripped)
+                    if malloc_decl:
+                        vname = malloc_decl.group(1)
+                        if vname not in stack_vars:
+                            malloc_vars[vname] = (line_num, stripped)
+
+                    # Detect free(ptr)
+                    free_match = re.search(r'\bfree\s*\(\s*(\w+)\s*\)', stripped)
+                    if free_match:
+                        freed_vars.add(free_match.group(1))
+
+                # Pass 2: detect memory errors
+                for idx, line in enumerate(lines):
+                    line_num = idx + 1
+                    stripped = line.strip()
+                    if not stripped or stripped.startswith("//") or stripped.startswith("/*"):
+                        continue
+
+                    # --- Invalid free: free() on stack variable or function parameter ---
+                    free_call = re.search(r'\bfree\s*\(\s*(\w+)\s*\)', stripped)
+                    if free_call:
+                        vname = free_call.group(1)
+                        if vname in stack_vars:
+                            err_exists = any(e["line"] == line_num and e["type"] == "InvalidFree" for e in errors)
+                            if not err_exists:
+                                errors.append({
+                                    "line": line_num, "type": "InvalidFree",
+                                    "message": f"Line {line_num}: `{vname}` was declared as a stack/local variable (line {stack_vars[vname]}), not allocated with malloc. Calling `free({vname})` crashes the program. Use `free()` only on heap memory from `malloc()`."
+                                })
+                        elif vname in fn_params and vname not in malloc_vars:
+                            err_exists = any(e["line"] == line_num and e["type"] == "InvalidFree" for e in errors)
+                            if not err_exists:
+                                errors.append({
+                                    "line": line_num, "type": "InvalidFree",
+                                    "message": f"Line {line_num}: `{vname}` is a function parameter (pointer), not necessarily heap memory. Callers may pass stack/local variables. `free()` should only be called on memory returned by `malloc()`."
+                                })
+
+                    # --- Return address of local variable ---
+                    return_local = re.search(r'\breturn\s+(\w+)', stripped)
+                    if return_local:
+                        vname = return_local.group(1)
+                        if vname in stack_vars:
+                            err_exists = any(e["line"] == line_num and e["type"] == "ReturnLocalAddress" for e in errors)
+                            if not err_exists:
+                                errors.append({
+                                    "line": line_num, "type": "ReturnLocalAddress",
+                                    "message": f"Line {line_num}: Returning the address of `{vname}` (a local/stack variable declared on line {stack_vars[vname]}). When the function exits, its stack memory is reclaimed. The returned pointer becomes invalid — like giving someone your apartment address after you've moved out."
+                                })
+
+                    # --- Use-after-free ---
+                    for freed_name in freed_vars:
+                        code_only = _strip_c_line(line)
+                        if freed_name in code_only and 'free' not in code_only:
+                            # Check if this usage is after the free call
+                            free_occurrences = [li for li, l in enumerate(lines) if re.search(r'\bfree\s*\(\s*' + re.escape(freed_name) + r'\s*\)', l)]
+                            if free_occurrences:
+                                last_free_line = free_occurrences[-1] + 1
+                                if line_num > last_free_line:
+                                    if re.search(r'\b' + re.escape(freed_name) + r'\b', code_only):
+                                        err_exists = any(e["line"] == line_num and e["type"] == "UseAfterFree" and freed_name in e["message"] for e in errors)
+                                        if not err_exists:
+                                            errors.append({
+                                                "line": line_num, "type": "UseAfterFree",
+                                                "message": f"Line {line_num}: `{freed_name}` was freed on line {last_free_line} but is still being used here. Accessing memory after freeing it is undefined behavior — like trying to read a book you already returned to the library."
+                                            })
+
+                # --- Off-by-one / buffer overflow ---
+                # Track malloc sizes and loop bounds
+                malloc_sizes = {}  # ptr_name -> max_allocated_size (as int)
+                for vname, (ln, text) in malloc_vars.items():
+                    # Extract size from malloc(n * sizeof(type)) — handle nested parens
+                    paren_depth = 0
+                    start = text.find('malloc(')
+                    if start >= 0:
+                        start += 7  # past 'malloc('
+                        end = start
+                        for i in range(start, len(text)):
+                            if text[i] == '(': paren_depth += 1
+                            elif text[i] == ')':
+                                if paren_depth == 0:
+                                    end = i
+                                    break
+                                paren_depth -= 1
+                        size_expr = text[start:end]
+                        # Try to evaluate simple expressions like "sizeof(int) * 4" or "4"
+                        simple = re.match(r'(?:sizeof\s*\(\s*[^)]+\s*\)\s*\*\s*)?(\d+)', size_expr)
+                        if simple:
+                            malloc_sizes[vname] = int(simple.group(1))
+
+                for idx, line in enumerate(lines):
+                    line_num = idx + 1
+                    stripped = line.strip()
+                    if not stripped or stripped.startswith("//") or stripped.startswith("/*"):
+                        continue
+
+                    # Off-by-one: for (int i = 0; i <= n; i++)
+                    off_by_one = re.search(r'for\s*\(\s*(?:\w+\s+)?(\w+)\s*=\s*\d+\s*;\s*\1\s*<=\s*(\w+)', stripped)
+                    if off_by_one:
+                        var = off_by_one.group(1)
+                        bound = off_by_one.group(2)
+                        err_exists = any(e["line"] == line_num and e["type"] == "OffByOne" for e in errors)
+                        if not err_exists:
+                            errors.append({
+                                "line": line_num, "type": "OffByOne",
+                                "message": f"Line {line_num}: Loop uses `{var} <= {bound}` — this runs one extra iteration. If `{bound}` is the array size, the last access `{var} = {bound}` reads past the end. Use `{var} < {bound}` instead."
+                            })
+
+                    # Heap buffer overflow: loop writing to malloc'd ptr with index >= allocated size
+                    for vname, (ln, text) in malloc_vars.items():
+                        if vname in malloc_sizes:
+                            max_idx = malloc_sizes[vname] - 1
+                            # Check if this line writes to vname[i] where i >= max_idx
+                            write_to = re.search(r'\b' + re.escape(vname) + r'\s*\[\s*(\w+)\s*\]\s*=', stripped)
+                            if write_to:
+                                idx_var = write_to.group(1)
+                                # If the index is a literal number that's too large
+                                if idx_var.isdigit() and int(idx_var) > max_idx:
+                                    err_exists = any(e["line"] == line_num and e["type"] == "BufferOverflow" for e in errors)
+                                    if not err_exists:
+                                        errors.append({
+                                            "line": line_num, "type": "BufferOverflow",
+                                            "message": f"Line {line_num}: Writing to `{vname}[{idx_var}]` but `{vname}` was allocated with only {malloc_sizes[vname]} element(s) (line {ln}). This writes past the end of the buffer — like trying to park 5 cars in a 4-car garage."
+                                        })
+                                # Check if there's a loop before that iterates beyond the size
+                                if not idx_var.isdigit():
+                                    for pi in range(max(0, idx - 5), idx):
+                                        pl = lines[pi].strip()
+                                        loop_bound = re.search(r'for\s*\(\s*(?:\w+\s+)?' + re.escape(idx_var) + r'\s*=\s*\d+\s*;\s*' + re.escape(idx_var) + r'\s*<\s*(\d+)', pl)
+                                        if loop_bound:
+                                            loop_max = int(loop_bound.group(1))
+                                            if loop_max - 1 > max_idx:
+                                                err_exists = any(e["line"] == line_num and e["type"] == "BufferOverflow" for e in errors)
+                                                if not err_exists:
+                                                    errors.append({
+                                                        "line": line_num, "type": "BufferOverflow",
+                                                        "message": f"Line {line_num}: Writing to `{vname}[{idx_var}]` but the loop iterates up to {loop_max - 1}, while `{vname}` only has {malloc_sizes[vname]} element(s) (allocated on line {ln}). This is a heap buffer overflow."
+                                                    })
 
     # ------------------------------------------------------------------
     # SQL
