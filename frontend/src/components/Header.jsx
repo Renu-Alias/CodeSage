@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Bell, Settings, Gift, Megaphone, MessageSquare, Star, User, Palette, HelpCircle, LogOut } from 'lucide-react';
 
 export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsLoggedIn, user }) {

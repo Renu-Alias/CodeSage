@@ -405,11 +405,11 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
         for idx, line in enumerate(lines):
             line_num = idx + 1
             stripped = line.strip()
-            ctrl_keywords = r'^\s*(if|elif|while)\b'
-            if re.match(ctrl_keywords, stripped):
-                assign_in_cond = re.search(r'(?<![=!<>])=(?!=)', stripped.split(':')[0] if ':' in stripped else stripped.split('{')[0] if '{' in stripped else stripped)
-                if assign_in_cond and '==' not in stripped.split(assign_in_cond.group(0))[0][-2:] if assign_in_cond else True:
-                    pass
+            if re.search(r'\b(if|elif|while)\b', stripped):
+                parens = stripped
+                for sep in [':', '{', '#']:
+                    if sep in parens: parens = parens.split(sep)[0]
+                assign_in_cond = re.search(r'(?<![=!<>])=(?!=)', parens)
                 if assign_in_cond:
                     errors.append({
                         "line": line_num, "type": "AssignmentInCondition",
@@ -617,14 +617,15 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                 line_num = idx + 1
                 stripped = line.strip()
                 if stripped.startswith("//") or stripped.startswith("/*"): continue
-                ctrl_keywords = r'^\s*(if|while|switch)\b'
-                if re.match(ctrl_keywords, stripped):
-                    assign_in_cond = re.search(r'(?<![=!<>])=(?!=)', stripped)
-                    if assign_in_cond:
-                        errors.append({
-                            "line": line_num, "type": "AssignmentInCondition",
-                            "message": f"Line {line_num}: You used `=` (assignment) in a condition. Did you mean `==` (comparison)? A single `=` **assigns** a value, `==` **checks** if values are equal."
-                        })
+                if re.search(r'\b(if|while|switch)\s*\(', stripped):
+                    parens = stripped[stripped.index('(')+1:stripped.rindex(')')] if '(' in stripped and ')' in stripped else ''
+                    if parens:
+                        assign_in_cond = re.search(r'(?<![=!<>])=(?!=)', parens)
+                        if assign_in_cond:
+                            errors.append({
+                                "line": line_num, "type": "AssignmentInCondition",
+                                "message": f"Line {line_num}: You used `=` (assignment) in a condition. Did you mean `==` (comparison)? A single `=` **assigns** a value, `==` **checks** if values are equal."
+                            })
 
     # ------------------------------------------------------------------
     # SQL
