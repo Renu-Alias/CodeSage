@@ -689,6 +689,18 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         "line": line_num, "title": "Inconsistent Indentation",
                         "message": f"Line {line_num}: Indented by {indent_level} spaces. Python convention is 4 spaces per level."
                     })
+        if lang == "python":
+            indent_levels = [len(l) - len(l.lstrip()) for l in lines if l.strip()]
+            if indent_levels:
+                max_indent = max(indent_levels)
+                if max_indent > 32:
+                    deepest_line = next(i+1 for i, li in enumerate(lines) if li.strip() and (len(li)-len(li.lstrip())) == max_indent)
+                    err_exists = any(e["title"] == "Deep Indentation" and e.get("line") == deepest_line for e in suggestions)
+                    if not err_exists:
+                        suggestions.append({
+                            "line": deepest_line, "title": "Deep Indentation",
+                            "message": f"Line {deepest_line}: {max_indent} spaces deep ({max_indent//4} levels). Very deep nesting makes code hard to read — consider refactoring."
+                        })
 
     # ------------------------------------------------------------------
     # PYTHON
@@ -1090,6 +1102,10 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     if '{' in stripped: continue
                     ctrl_kws = r'^\s*(if|for|while|switch|else|case|default|do)\b'
                     if not re.match(ctrl_kws, stripped):
+                        if language == "java" and ('->' in stripped or stripped.startswith('.') or stripped.startswith('return ') and stripped.endswith(')')):
+                            continue
+                        if language == "rust" and ('->' in stripped or '=>' in stripped or stripped.startswith('|') or stripped.startswith('.')):
+                            continue
                         fn_or_assign = re.search(r'\b\w+\s*\(', stripped) or re.search(r'\w+\s*=', stripped)
                         if fn_or_assign:
                             has_semi = any(e["line"] == line_num and e["type"] == "MissingSemicolon" for e in errors)
@@ -1099,6 +1115,91 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                                     "message": f"Line {line_num}: Missing `;`. In {language}, every statement ends with a semicolon — like a period at the end of a sentence."
                                 })
                                 fixes.setdefault(line_num, []).append(("append", ";"))
+
+        if lang == "rust":
+            # Unsafe block detection
+            unsafe_found = False
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                if 'unsafe' in stripped and '{' in stripped:
+                    s_exists = any(s["title"] == "Unsafe Block" and s.get("line") == line_num for s in suggestions)
+                    if not s_exists:
+                        suggestions.append({
+                            "line": line_num, "title": "Unsafe Block",
+                            "message": f"Line {line_num}: `unsafe` block bypasses Rust's safety guarantees. Ensure all unsafe operations are justified and documented."
+                        })
+                    unsafe_found = True
+            # Use after drop
+            dropped_vars = set()
+            drop_lines = {}
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                dm = re.search(r'\bdrop\s*\(\s*(\w+)\s*\)', stripped)
+                if dm and not stripped.strip().startswith("//"):
+                    vname = dm.group(1)
+                    dropped_vars.add(vname)
+                    drop_lines[vname] = drop_lines.get(vname, []) + [line_num]
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                for dv in dropped_vars:
+                    if re.search(r'\b' + re.escape(dv) + r'\b', stripped) and dv in drop_lines:
+                        dl = drop_lines[dv]
+                        last_drop_line = max(dl)
+                        if line_num > last_drop_line:
+                            if not stripped.strip().startswith("//") and not re.match(r'^\s*let\s+' + re.escape(dv), stripped) and re.search(r'\b' + re.escape(dv) + r'\s*[\(\.\[]', stripped):
+                                err_exists = any(e["line"] == line_num and e["type"] == "UseAfterDrop" for e in errors)
+                                if not err_exists:
+                                    errors.append({
+                                        "line": line_num, "type": "UseAfterDrop",
+                                        "message": f"Line {line_num}: `{dv}` was dropped on line {last_drop_line} but used here. Once a value is dropped (`drop()`), it is no longer valid — like throwing away a receipt and then trying to return the item."
+                                    })
+            # Use after move (basic, for non-literal patterns)
+            moved_vars = {}
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                mm = re.match(r'^\s*let\s+(\w+)\s*=\s*(\w+)\s*;', stripped)
+                if mm:
+                    src = mm.group(2)
+                    if src not in ("true", "false", "self") and not re.match(r'^\d', src):
+                        moved_vars[src] = line_num
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                for mv, mv_line in list(moved_vars.items()):
+                    if line_num > mv_line and re.search(r'\b' + re.escape(mv) + r'\b', stripped):
+                        if not stripped.strip().startswith("//") and not re.match(r'^\s*let\s+' + re.escape(mv), stripped):
+                            if re.search(r'\b' + re.escape(mv) + r'\s*[\(\.]', stripped):
+                                err_exists = any(e["line"] == line_num and e["type"] == "UseAfterMove" for e in errors)
+                                if not err_exists:
+                                    errors.append({
+                                        "line": line_num, "type": "UseAfterMove",
+                                        "message": f"Line {line_num}: `{mv}` was moved on line {mv_line} and used here. After moving ownership, the original variable is no longer valid — like lending out your book and then trying to read from it."
+                                    })
+            # Borrow conflict detection
+            borrows = []  # list of (var, kind, line)
+            for idx, line in enumerate(lines):
+                line_num = idx + 1
+                stripped = line.strip()
+                for m in re.finditer(r'&(mut\s+)?(\w+)', stripped):
+                    kind = "mut" if m.group(1) else "shared"
+                    var = m.group(2)
+                    if var in ("self",):
+                        continue
+                    for prev_var, prev_kind, prev_line in borrows:
+                        if prev_var == var:
+                            if kind == "mut" or prev_kind == "mut":
+                                if line_num > prev_line:
+                                    err_exists = any(e["line"] == line_num and e["type"] == "BorrowConflict" for e in errors)
+                                    if not err_exists:
+                                        errors.append({
+                                            "line": line_num, "type": "BorrowConflict",
+                                            "message": f"Line {line_num}: Cannot borrow `{var}` as {'mutable' if kind == 'mut' else 'immutable'} because it is already borrowed as {'mutable' if prev_kind == 'mut' else 'immutable'} on line {prev_line}. Like trying to renovate a house while someone is living in it."
+                                        })
+                    borrows.append((var, kind, line_num))
 
         if lang in ("c", "c++"):
             # ------------------------------------------------------------------
@@ -1461,6 +1562,16 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                     "line": line_num, "type": "InvalidColorValue",
                     "message": f"Line {line_num}: Plain numbers aren't valid colors. Use hex (`#ff0000`), rgb(`rgb(255,0,0)`), or named colors."
                 })
+            hex_matches = re.findall(r'#[a-fA-F0-9]{3,8}', stripped)
+            suspect_matches = re.findall(r'#[a-zA-Z0-9]+', stripped)
+            for m in suspect_matches:
+                if m not in hex_matches:
+                    err_exists = any(e["line"] == line_num and e["type"] == "InvalidColorValue" for e in errors)
+                    if not err_exists:
+                        errors.append({
+                            "line": line_num, "type": "InvalidColorValue",
+                            "message": f"Line {line_num}: `{m}` is not a valid hex color. Hex colors use `#` followed by 3 or 6 hex digits (0-9, a-f), e.g., `#ff0000`."
+                        })
 
     # ------------------------------------------------------------------
     # C/C++ EXTRA CHECKS (null ptr, double free, memory leak, wild ptr,

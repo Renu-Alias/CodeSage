@@ -249,7 +249,7 @@ check("C# async + LINQ",
 print("\n=== Java (complex logic) ===")
 
 # 15. Java streams + lambdas — known: `->` triggers MissingSemicolon
-check("Java streams (known semi FP on lambdas)",
+check("Java streams (lambda chaining now fixed)",
       'import java.util.*;\n'
       'class Analyzer {\n'
       '  public int sum(List<Integer> nums) {\n'
@@ -258,7 +258,7 @@ check("Java streams (known semi FP on lambdas)",
       '      .reduce(0, Integer::sum);\n'
       '  }\n'
       '}', 'java',
-      expect_errors_count=2)  # MissingSemicolon on lambda lines (known FP)
+      expect_no_errors={"MissingSemicolon"})
 
 # 16. Java recursive tree — clean, no recursion flag for Java
 check("Java recursive tree clean",
@@ -446,8 +446,8 @@ check("simple struct + impl",
       expect_no_errors={"MissingSemicolon"},
       expect_errors_count=0)
 
-# 32. Simple match expression — known: `->` in return type triggers MissingSemicolon
-check("simple match expression (known semi FP)",
+# 32. Simple match expression
+check("simple match expression",
       'fn describe(n: i32) -> &\'static str {\n'
       '  if n > 1 { "other" } else { "small" }\n'
       '}', 'rust',
@@ -661,10 +661,10 @@ check("gradient + calc clean",
       '}', 'css',
       expect_no_errors={"InvalidColorValue"})
 
-# 47. Invalid hex color — known: analyzer only detects numeric colors, not invalid hex
-check("invalid hex color (not detected currently)",
+# 47. Invalid hex color \u2014 now detected by CSS hex validation
+check("invalid hex color (now detected)",
       '.foo { color: #ggg; }', 'css',
-      expect_errors_count=0)
+      expect_errors={"InvalidColorValue"})
 
 # 48. Numeric color value (detected)
 check("numeric color value",
