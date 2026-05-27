@@ -898,7 +898,8 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
     # ------------------------------------------------------------------
     # C / C++ / C# / Dart
     # ------------------------------------------------------------------
-    if lang in ("c", "c++", "c#", "dart"):
+    semicolon_langs = ["c", "c++", "c#", "dart", "java", "rust"]
+    if lang in semicolon_langs:
         if lang in ("c", "c++"):
             known_headers = {
                 "stdio.h", "stdlib.h", "string.h", "math.h", "time.h",
@@ -1060,7 +1061,23 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             stripped = line.strip()
             if not stripped or stripped.startswith("//") or stripped.startswith("/*"): continue
             last_ch = _last_code_char(line)
-            type_kws = ["int ", "float ", "double ", "char ", "String ", "bool ", "void "]
+            type_kws = ["int ", "float ", "double ", "char ", "String ", "bool ", "void ",
+                         "byte ", "short ", "long ", "boolean ", "public ", "private ",
+                         "protected ", "class ", "static ", "final ", "const ", "let ",
+                         "mut ", "fn ", "impl ", "struct ", "enum ", "trait ",
+                         "i32 ", "i64 ", "u32 ", "u64 ", "f32 ", "f64 ",
+                         "usize ", "isize ", "Vec ", "Box ", "Option ",
+                         "Result ", "HashMap ",
+                         "abstract ", "synchronized ", "volatile ", "transient ",
+                         "native ", "strictfp ",
+                         "string ", "object ", "decimal ",
+                         "sbyte ", "uint ", "ulong ", "ushort ",
+                         "dynamic ", "var ", "readonly ", "virtual ", "override ",
+                         "sealed ", "unsafe ", "fixed ",
+                         "pub ", "use ", "mod ", "crate ", "super ", "self ",
+                         "where ", "as ", "type ", "impl ", "dyn ",
+                         "async ", "await ", "move ", "ref ", "static ",
+                         "extern ", "macro_rules"]
             if any(stripped.startswith(kw) for kw in type_kws):
                 if last_ch not in (';', '{', '}'):
                     errors.append({
