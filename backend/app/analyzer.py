@@ -1632,6 +1632,14 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         "line": line_num, "type": "DivisionByZero",
                         "message": f"Line {line_num}: Division by literal zero. Dividing by zero crashes your program — like asking 'how many groups of nothing can you make?' It has no answer."
                     })
+            mod_zero_lit = re.search(r'(?<!\w)(\w+)\s*%\s*0\b', stripped)
+            if mod_zero_lit:
+                err_exists = any(e["line"] == line_num and ("DivByZero" in e["type"] or "DivisionByZero" in e["type"] or "ModuloByZero" in e["type"]) for e in errors)
+                if not err_exists:
+                    errors.append({
+                        "line": line_num, "type": "DivisionByZero",
+                        "message": f"Line {line_num}: Modulo by literal zero. Using `% 0` crashes your program — like asking 'how many groups of nothing can you make?' It has no answer."
+                    })
 
             # Detect function calls where a parameter is literal 0 and may be used as divisor
             div_call = re.search(r'(\w+)\s*\(\s*[^)]*\b(\w+)\s*,\s*0\s*\)', stripped)
