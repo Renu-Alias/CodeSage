@@ -27,7 +27,6 @@ function App() {
   });
 
   // Protected routes: redirect to login if not authenticated
-  const isLoggedIn = true; // REMOVE: stored in sessionStorage
   const protectedRoutes = ['analyze', 'dashboard', 'learn', 'payment', 'account-settings'];
   const activePage = protectedRoutes.includes(currentPage) && !isLoggedIn ? 'login' : currentPage;
 
