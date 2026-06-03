@@ -693,7 +693,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
             indent_levels = [len(l) - len(l.lstrip()) for l in lines if l.strip()]
             if indent_levels:
                 max_indent = max(indent_levels)
-                if max_indent > 32:
+                if max_indent > 16:
                     deepest_line = next(i+1 for i, li in enumerate(lines) if li.strip() and (len(li)-len(li.lstrip())) == max_indent)
                     err_exists = any(e["title"] == "Deep Indentation" and e.get("line") == deepest_line for e in suggestions)
                     if not err_exists:
@@ -1149,7 +1149,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                         dl = drop_lines[dv]
                         last_drop_line = max(dl)
                         if line_num > last_drop_line:
-                            if not stripped.strip().startswith("//") and not re.match(r'^\s*let\s+' + re.escape(dv), stripped) and re.search(r'\b' + re.escape(dv) + r'\s*[\(\.\[]', stripped):
+                            if not stripped.strip().startswith("//") and not re.match(r'^\s*let\s+' + re.escape(dv), stripped) and re.search(r'\b' + re.escape(dv) + r'(?=[^a-zA-Z0-9_])', stripped):
                                 err_exists = any(e["line"] == line_num and e["type"] == "UseAfterDrop" for e in errors)
                                 if not err_exists:
                                     errors.append({
@@ -1172,7 +1172,7 @@ def run_general_analysis(code: str, language: str, mode: str) -> dict:
                 for mv, mv_line in list(moved_vars.items()):
                     if line_num > mv_line and re.search(r'\b' + re.escape(mv) + r'\b', stripped):
                         if not stripped.strip().startswith("//") and not re.match(r'^\s*let\s+' + re.escape(mv), stripped):
-                            if re.search(r'\b' + re.escape(mv) + r'\s*[\(\.]', stripped):
+                            if re.search(r'\b' + re.escape(mv) + r'(?=[^a-zA-Z0-9_])', stripped):
                                 err_exists = any(e["line"] == line_num and e["type"] == "UseAfterMove" for e in errors)
                                 if not err_exists:
                                     errors.append({

@@ -697,8 +697,8 @@ check("Dart async + generator clean",
 print(f"\n{'='*60}")
 total = passed + failed
 print(f"Complex logic tests: {passed}/{total} passed")
-grand_total = 83 + 164 + total
-print(f"Overall total: basic(83) + advanced(164) + complex({total}) = {grand_total}")
+grand_total = 89 + 163 + total
+print(f"Overall total: basic(89) + advanced(163) + complex({total}) = {grand_total}")
 if failed:
     print(f"FAILED: {failed}")
 else:

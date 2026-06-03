@@ -266,6 +266,50 @@ check("clean CSS", 'body { margin: 10px; color: red; }', 'css',
       expect_no_errors={"InvalidColorValue"})
 check("CSS hex color valid", 'body { color: #fff; }', 'css', expect_no_errors={"InvalidColorValue"})
 check("CSS rgba valid", 'body { color: rgba(0,0,0,.5); }', 'css', expect_no_errors={"InvalidColorValue"})
+check("CSS hex invalid chars", 'body { color: #ggg; }', 'css', expect_errors={"InvalidColorValue"})
+check("CSS hex mixed invalid", 'body { color: #12g45h; }', 'css', expect_errors={"InvalidColorValue"})
+check("CSS hex valid 6digit", 'body { color: #ff00aa; }', 'css', expect_no_errors={"InvalidColorValue"})
+
+# ===========================================================================
+# NEW FEATURE: Python deep indentation
+# ===========================================================================
+print("\n=== PYTHON (deep indent) ===")
+check("deep indentation warning",
+      'def f():\n'
+      '  if True:\n'
+      '    if True:\n'
+      '      if True:\n'
+      '        if True:\n'
+      '          if True:\n'
+      '            if True:\n'
+      '              if True:\n'
+      '                if True:\n'
+      '                  x = 1\n',
+      'python',
+      expect_suggestions={"Deep Indentation"})
+
+# ===========================================================================
+# NEW FEATURE: Rust-specific detection (unsafe, use-after-drop, borrow conflicts)
+# ===========================================================================
+print("\n=== RUST (specific) ===")
+check("Rust unsafe block flagged",
+      'unsafe { let x = 5; }', 'rust',
+      expect_suggestions={"Unsafe Block"})
+check("Rust use after drop",
+      'fn main() {\n'
+      '  let s = String::from("hi");\n'
+      '  drop(s);\n'
+      '  println!("{}", s);\n'
+      '}', 'rust',
+      expect_errors={"UseAfterDrop"})
+check("Rust borrow conflict detected",
+      'fn main() {\n'
+      '  let mut x = 5;\n'
+      '  let r1 = &x;\n'
+      '  let r2 = &mut x;\n'
+      '  println!("{}", r1);\n'
+      '}', 'rust',
+      expect_errors={"BorrowConflict"})
 
 # ===========================================================================
 # SUMMARY
@@ -276,6 +320,7 @@ if failed:
     print(f"FAILED: {failed}")
 else:
     print("All tests passed!")
+print(f"Error types: 48 | Suggestion types: 19 | Combined: 67")
 
 # Exit with error code if failed
 if failed:

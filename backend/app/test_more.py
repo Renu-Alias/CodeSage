@@ -516,6 +516,56 @@ check("annotations clean",
       '}', 'java',
       expect_no_errors={"MissingSemicolon"})
 
+# 60. Rust unsafe block detected
+check("unsafe block suggestion",
+      'unsafe { std::ptr::read(42 as *const i32); }', 'rust',
+      expect_suggestions={"Unsafe Block"})
+
+# 61. Rust use after drop
+check("use after drop detected",
+      'fn main() {\n'
+      '  let s = String::from("hello");\n'
+      '  drop(s);\n'
+      '  let _ = s.len();\n'
+      '}', 'rust',
+      expect_errors={"UseAfterDrop"})
+
+# 62. Rust use after move (simple let binding)
+check("use after move detected",
+      'fn main() {\n'
+      '  let s = String::from("hi");\n'
+      '  let t = s;\n'
+      '  let _ = s.len();\n'
+      '}', 'rust',
+      expect_errors={"UseAfterMove"})
+
+# 63. Rust borrow conflict
+check("borrow conflict detected",
+      'fn main() {\n'
+      '  let mut x = 5;\n'
+      '  let r1 = &x;\n'
+      '  let r2 = &mut x;\n'
+      '  println!("{}", r1);\n'
+      '}', 'rust',
+      expect_errors={"BorrowConflict"})
+
+# 64. Rust clean ownership (no false positives)
+check("clean ownership no FP",
+      'fn main() {\n'
+      '  let s = String::from("hi");\n'
+      '  println!("{}", s);\n'
+      '}', 'rust',
+      expect_errors_count=0)
+
+# 65. Rust valid borrow no FP
+check("clean borrow no FP",
+      'fn main() {\n'
+      '  let mut x = 5;\n'
+      '  let r1 = &mut x;\n'
+      '  *r1 = 10;\n'
+      '}', 'rust',
+      expect_errors_count=0)
+
 # ===========================================================================
 # C# — more complex
 # ===========================================================================
@@ -853,10 +903,10 @@ check("isolate communication clean",
 print(f"\n{'='*60}")
 total = passed + failed
 print(f"More complex tests: {passed}/{total} passed")
-prev_total = 83 + 164 + 51  # basic + advanced + previous complex
+prev_total = 89 + 163 + 51  # basic + advanced + previous complex
 grand_total = prev_total + total
-print(f"Total test cases: basic(83) + advanced(164) + complex1(51) + complex2({total}) = {grand_total}")
-print(f"Error types: 45 | Suggestion types: 19 | Combined: 64")
+print(f"Total test cases: basic(89) + advanced(163) + complex1(51) + complex2({total}) = {grand_total}")
+print(f"Error types: 48 | Suggestion types: 19 | Combined: 67")
 if failed:
     print(f"FAILED: {failed}")
 else:
