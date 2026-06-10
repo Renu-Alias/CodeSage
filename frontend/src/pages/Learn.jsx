@@ -285,17 +285,6 @@ export default function Learn({ setCurrentPage }) {
           </div>
         </div>
       </section>
-
-      {/* 6. CTA */}
-      <section className="learn-cta text-center animate-fade">
-        <div className="cta-banner-card card">
-          <h2>Ready to accelerate your learning?</h2>
-          <p>Join thousands of students using AI to master programming 3x faster. No credit card required to start.</p>
-          <button className="btn btn-primary" onClick={() => setCurrentPage('analyze')}>
-            Get started for free
-          </button>
-        </div>
-      </section>
     </div>
   );
 }
