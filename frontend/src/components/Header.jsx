@@ -106,8 +106,6 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
         <div className="header-actions">
           {isLoggedIn ? (
             <>
-              <span className="free-plan-badge">Free plan</span>
-
               <div className="dropdown-wrapper" ref={notifRef}>
                 <button className="icon-btn" title="Notifications" onClick={() => { setNotifOpen(!notifOpen); setSettingsOpen(false); }}>
                   <Bell size={20} className="header-icon" />
