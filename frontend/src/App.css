@@ -770,6 +770,259 @@
 
 
 /* ----------------------------------------------------
+   CLASSROOM PAGE STYLES
+---------------------------------------------------- */
+.classroom-page {
+  min-height: 80vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 60px 24px 80px;
+}
+
+.classroom-container {
+  width: 100%;
+  max-width: 680px;
+}
+
+.classroom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 40px;
+}
+
+.classroom-option {
+  cursor: pointer;
+  text-align: center;
+  padding: 40px 28px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.classroom-option:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.classroom-option-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background-color: #F0EEFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: var(--brand);
+}
+
+.classroom-option h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: var(--text-dark);
+}
+
+.classroom-option p {
+  font-size: 13px;
+  color: var(--text-light);
+  margin-bottom: 20px;
+}
+
+.classroom-option-features {
+  list-style: none;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-medium);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.classroom-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(93, 89, 214, 0.08);
+  width: 100%;
+  padding: 40px;
+  margin-top: 40px;
+}
+
+.classroom-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-medium);
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 24px;
+  padding: 0;
+}
+
+.classroom-back-btn:hover {
+  color: var(--brand);
+}
+
+.classroom-form-title {
+  font-size: 20px;
+  margin-bottom: 24px;
+  color: var(--text-dark);
+}
+
+.classroom-submit-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  width: 100%;
+  justify-content: center;
+}
+
+.classroom-code-input {
+  font-family: 'Courier New', monospace;
+  font-size: 24px !important;
+  letter-spacing: 8px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.classroom-success-card {
+  text-align: center;
+  padding: 60px 40px;
+}
+
+.classroom-success-card h2 {
+  font-size: 24px;
+  margin: 20px 0 8px;
+  color: var(--text-dark);
+}
+
+.classroom-desc {
+  font-size: 14px;
+  color: var(--text-medium);
+  margin-bottom: 24px;
+}
+
+.classroom-code-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.classroom-code-text {
+  font-family: 'Courier New', monospace;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 12px;
+  color: var(--brand);
+  background-color: #F0EEFF;
+  padding: 16px 24px;
+  border-radius: 12px;
+}
+
+.classroom-code-copy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+.classroom-code-hint {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-bottom: 32px;
+}
+
+.classroom-success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.classroom-list-section {
+  margin-top: 48px;
+}
+
+.classroom-list-section h3 {
+  font-size: 16px;
+  color: var(--text-dark);
+  margin-bottom: 16px;
+}
+
+.classroom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.classroom-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.classroom-list-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.classroom-list-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.classroom-list-code {
+  font-size: 12px;
+  color: var(--text-light);
+  font-family: 'Courier New', monospace;
+}
+
+.classroom-list-copy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 8px 14px;
+}
+
+.success-check {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-color: #E8F5E9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  color: #2E7D32;
+}
+
+@media (max-width: 640px) {
+  .classroom-grid {
+    grid-template-columns: 1fr;
+  }
+  .classroom-code-text {
+    font-size: 24px;
+    letter-spacing: 8px;
+  }
+}
+
+
+/* ----------------------------------------------------
    ANALYZE PAGE / EDITOR STYLES
 ---------------------------------------------------- */
 .analyze-grid {

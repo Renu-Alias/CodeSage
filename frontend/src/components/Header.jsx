@@ -21,23 +21,15 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
     { id: 'analyze', label: 'Analyze' },
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'learn', label: 'Learn' },
-    { id: 'pricing', label: 'Pricing' }
+    { id: 'classroom', label: 'Classroom' }
   ];
 
   const handleNavClick = (e, targetId) => {
     e.preventDefault();
     setNotifOpen(false);
     setSettingsOpen(false);
-    if (targetId === 'pricing') {
-      setCurrentPage('home');
-      setTimeout(() => {
-        const el = document.getElementById('pricing-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    } else {
-      setCurrentPage(targetId);
-      window.scrollTo(0, 0);
-    }
+    setCurrentPage(targetId);
+    window.scrollTo(0, 0);
   };
 
   const handleLogout = () => {

@@ -2,7 +2,7 @@ import React from 'react';
 import { Code2, AlertTriangle, Lightbulb, Compass, Award, Star } from 'lucide-react';
 import { LANGUAGES } from '../constants/languages';
 
-export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan, isLoggedIn }) {
+export default function Home({ setCurrentPage, setSampleCode, isLoggedIn }) {
   const handleStartAnalysis = (codeType) => {
     if (codeType === 'demo') {
       setSampleCode({
@@ -239,92 +239,6 @@ export default function Home({ setCurrentPage, setSampleCode, setSelectedPlan, i
                   <p className="user-role">Graduate TA, MIT</p>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. PRICING SECTION */}
-      <section className="pricing-section" id="pricing-section">
-        <div className="container">
-          <div className="section-header text-center">
-            <h2 className="section-title">Ready to master your code?</h2>
-          </div>
-
-          <div className="pricing-grid">
-            {/* Free */}
-            <div className="pricing-card card">
-              <h3 className="tier-name">Free</h3>
-              <div className="price-tag">
-                <span className="currency">₹</span>
-                <span className="price-amount">0</span>
-                <span className="period">/month</span>
-              </div>
-              <p className="tier-desc">Essential tutoring</p>
-              
-              <ul className="tier-features">
-                <li>✓ 10 snippets per day</li>
-                <li>✓ Standard bug detection</li>
-                <li>✓ Weakness report dashboard</li>
-                <li>✓ Targeted exercise sets</li>
-                <li>✓ Community support</li>
-                <li>✓ Basic explanations</li>
-              </ul>
-              
-              <button className="btn btn-secondary pricing-btn" onClick={() => { setSelectedPlan('free'); setCurrentPage(isLoggedIn ? 'payment' : 'login'); }}>
-                Get started
-              </button>
-            </div>
-
-            {/* Pro */}
-            <div className="pricing-card card pro-card">
-              <div className="popular-badge">MOST POPULAR</div>
-              <h3 className="tier-name">Pro</h3>
-              <div className="price-tag">
-                <span className="currency">₹</span>
-                <span className="price-amount">299</span>
-                <span className="period">/month</span>
-              </div>
-              <p className="tier-desc">Advanced analysis</p>
-              
-              <ul className="tier-features">
-                <li>✓ Unlimited snippets</li>
-                <li>✓ Deep logic & complexity analysis</li>
-                <li>✓ Priority AI processing</li>
-                <li>✓ Auto-fix suggestions</li>
-                <li>✓ Multi-file batch analysis</li>
-                <li>✓ Advanced performance metrics</li>
-                <li>✓ Export detailed reports (PDF/JSON)</li>
-                <li>✓ Ad-free experience</li>
-                <li>✓ Email support with 24h response</li>
-              </ul>
-              
-              <button className="btn btn-primary pricing-btn" onClick={() => { setSelectedPlan('pro'); setCurrentPage(isLoggedIn ? 'payment' : 'login'); }}>
-                Start Pro trial
-              </button>
-            </div>
-
-            {/* Classroom */}
-            <div className="pricing-card card">
-              <h3 className="tier-name">Classroom</h3>
-              <div className="price-tag">
-                <span className="currency">₹</span>
-                <span className="price-amount">999</span>
-                <span className="period">/month</span>
-              </div>
-              <p className="tier-desc">For teaching teams</p>
-              
-              <ul className="tier-features">
-                <li>✓ Up to 50 student seats</li>
-                <li>✓ Shared classroom history</li>
-                <li>✓ Common error analytics</li>
-                <li>✓ Admin controls</li>
-                <li>✓ LMS integration</li>
-              </ul>
-              
-              <button className="btn btn-secondary pricing-btn" onClick={() => { setSelectedPlan('classroom'); setCurrentPage(isLoggedIn ? 'payment' : 'login'); }}>
-                Get started
-              </button>
             </div>
           </div>
         </div>

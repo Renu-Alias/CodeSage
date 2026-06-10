@@ -4,7 +4,6 @@ import { CreditCard, ChevronLeft, Shield, Check } from 'lucide-react';
 const PLANS = {
   free: { name: 'Free', price: 0, period: '/month', color: 'var(--text-medium)' },
   pro: { name: 'Pro', price: 299, period: '/month', color: 'var(--brand)' },
-  classroom: { name: 'Classroom', price: 999, period: '/month', color: 'var(--text-dark)' },
 };
 
 export default function Payment({ selectedPlan, setCurrentPage }) {
