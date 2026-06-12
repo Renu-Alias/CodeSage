@@ -222,31 +222,99 @@
   transform: rotate(90deg);
 }
 
-.appearance-submenu {
-  padding-left: 44px;
-  border-left: 2px solid var(--border);
-  margin: 0 0 4px 44px;
+/* Appearance flyout submenu */
+.appearance-trigger {
+  position: relative;
 }
 
-.appearance-submenu .dropdown-item-single {
-  border-bottom: none;
-  padding: 6px 12px;
+.appearance-flyout {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: -1px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  min-width: 170px;
+  z-index: 1100;
+  overflow: hidden;
+  animation: dropdownFadeIn 0.15s ease-out;
 }
 
-.appearance-submenu .dropdown-item-single.active {
-  background: var(--brand-light);
-  border-radius: 8px;
-}
-
-.appearance-submenu .dropdown-item-single.active .dropdown-item-title {
-  color: var(--brand);
+.appearance-flyout-header {
+  padding: 8px 14px 6px;
+  font-size: 10px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-light);
+  border-bottom: 1px solid var(--border);
+  background: #fafafa;
 }
 
-.appearance-submenu .dropdown-item-icon {
-  width: 24px;
-  height: 24px;
-  background: none;
+.appearance-flyout-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.appearance-flyout-item:not(:last-child) {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.appearance-flyout-item:hover {
+  background: #f8f8ff;
+}
+
+.appearance-flyout-item.active {
+  background: var(--brand-light);
+}
+
+.appearance-flyout-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0ff;
+  border-radius: 8px;
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.appearance-flyout-item.active .appearance-flyout-icon {
+  background: var(--brand);
+  color: #fff;
+}
+
+.appearance-flyout-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.appearance-flyout-item.active .appearance-flyout-label {
+  color: var(--brand);
+}
+
+.appearance-flyout-check {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.dropdown-chevron-left {
+  font-size: 10px;
+  color: var(--text-light);
+  transition: transform 0.2s;
+}
+
+.dropdown-chevron-left.open {
+  transform: rotate(-90deg);
 }
 
 .dropdown-item-icon {
