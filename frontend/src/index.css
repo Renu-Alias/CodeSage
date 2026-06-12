@@ -4,6 +4,7 @@
 :root {
   /* Harmonious Color Palette (HSL Tailored) */
   --brand: #5D59D6;
+  --primary: #5D59D6;
   --brand-hsl: 242, 60%, 59%;
   --brand-light: #F0EFFF;
   --brand-hover: #4B47B8;

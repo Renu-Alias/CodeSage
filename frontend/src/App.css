@@ -2940,6 +2940,7 @@ body.dark-mode .profile-card { background: var(--surface); }
 /* Dark mode overrides — toggled via .dark-mode on body */
 body.dark-mode {
   --brand: #7C78FF;
+  --primary: #7C78FF;
   --brand-hsl: 242, 60%, 75%;
   --brand-light: #252540;
   --brand-hover: #9390FF;
@@ -3206,9 +3207,87 @@ body.dark-mode .code-icon { background: #3a2a10; color: #ffb74d; }
 .settings-level-option.active { border-color: var(--primary); color: var(--primary); background: #f0f0ff; }
 .settings-level-option:hover { border-color: var(--primary); }
 .settings-actions { margin-top: 28px; }
-body.dark-mode .btn-back:hover { background: #252540; }
-body.dark-mode .settings-level-option.active { background: #252540; }
+body.dark-mode .btn-back:hover { background: var(--brand-light); }
+body.dark-mode .settings-level-option.active { background: var(--brand-light); border-color: var(--brand); color: var(--brand); }
 body.dark-mode .settings-avatar-section { border-color: var(--border); }
 body.dark-mode .settings-divider { border-color: var(--border); }
+body.dark-mode .settings-level-option:hover:not(.active) { border-color: var(--brand); }
+body.dark-mode .form-label { color: var(--text-medium); }
+body.dark-mode .settings-section-title { color: var(--text-dark); }
+body.dark-mode .glass { background: rgba(21, 21, 38, 0.8); border-color: var(--border); }
+body.dark-mode .profile-avatar { border-color: var(--border); }
+body.dark-mode .hero-badge { background: var(--brand-light); color: var(--brand); }
+body.dark-mode .step-card { background: var(--panel-bg); }
+body.dark-mode .step-number { background: var(--brand-light); color: var(--brand); }
+body.dark-mode .learning-path-card { background: var(--panel-bg); }
+body.dark-mode .insights-popover { background: var(--brand-light); border-color: var(--border); }
+body.dark-mode .popover-title { color: var(--brand); }
+body.dark-mode .feature-card { background: var(--panel-bg); }
+body.dark-mode .feature-icon-wrapper.err { background: var(--err-bg); }
+body.dark-mode .feature-icon-wrapper.fixed { background: var(--fixed-bg); }
+body.dark-mode .feature-icon-wrapper.sug { background: var(--sug-bg); }
+body.dark-mode .feature-icon-wrapper.brand { background: var(--brand-light); }
+body.dark-mode .testimonial-card { background: var(--panel-bg); }
+body.dark-mode .testimonial-text { color: var(--text-medium); }
+body.dark-mode .avatar { background: var(--brand-light); color: var(--brand); }
+body.dark-mode .user-name { color: var(--text-dark); }
+body.dark-mode .user-role { color: var(--text-medium); }
+body.dark-mode .monitor-frame { background: var(--panel-bg); border-color: var(--border); }
+body.dark-mode .workspace-sidebar { background: #10101e; border-color: var(--border); }
+body.dark-mode .sidebar-item { color: var(--text-medium); }
+body.dark-mode .sidebar-item.active { background: var(--brand-light); color: var(--brand); }
+body.dark-mode .workspace-editor { background: #0b0b16; }
+body.dark-mode .code-line { color: var(--text-dark); }
+body.dark-mode .code-line .keyword { color: #7C78FF; }
+body.dark-mode .code-line .func { color: #64b5f6; }
+body.dark-mode .code-line .comment { color: var(--text-light); }
+body.dark-mode .code-line .num { color: #fbbf24; }
+body.dark-mode .code-line .builtin { color: #4ade80; }
+body.dark-mode .code-line .danger { color: var(--err-color); }
+body.dark-mode .err-highlight { background: rgba(255, 107, 122, 0.1); }
+body.dark-mode .err-highlight-row { background: rgba(255, 107, 122, 0.08); }
+body.dark-mode .preview-editor-body { background: #0b0b16; }
+body.dark-mode .workspace-title { color: var(--text-light); }
+body.dark-mode .hero-subtitle { color: var(--text-medium); }
+body.dark-mode .section-subtitle { color: var(--text-light); }
+body.dark-mode .section-title { color: var(--text-dark); }
+body.dark-mode .lang-tag { background: var(--brand-light); color: var(--brand); border-color: transparent; }
+body.dark-mode .step-card-desc { color: var(--text-medium); }
+body.dark-mode .feature-content p { color: var(--text-medium); }
+body.dark-mode .feature-content h3 { color: var(--text-dark); }
+body.dark-mode .learning-path-desc { color: var(--text-medium); }
+body.dark-mode .star-rating { color: #fbbf24; }
+body.dark-mode .site-footer { background: #10101e; border-color: var(--border); }
+body.dark-mode .footer-heading { color: var(--text-dark); }
+body.dark-mode .auth-page { background: var(--bg); }
+body.dark-mode .auth-title { color: var(--text-dark); }
+body.dark-mode .auth-subtitle { color: var(--text-medium); }
+body.dark-mode .auth-tab { color: var(--text-medium); }
+body.dark-mode .auth-tab.active { color: var(--brand); border-color: var(--brand); }
+body.dark-mode .auth-tab:hover { color: var(--text-dark); }
+body.dark-mode .auth-divider-text { color: var(--text-light); }
+body.dark-mode .auth-error { background: var(--err-bg); color: var(--err-color); border-color: var(--err-border); }
+body.dark-mode .classroom-card { background: var(--panel-bg); border-color: var(--border); }
+body.dark-mode .classroom-card:hover { border-color: var(--brand); }
+body.dark-mode .classroom-card-title { color: var(--text-dark); }
+body.dark-mode .classroom-card-code { color: var(--text-medium); }
+body.dark-mode .classroom-card-desc { color: var(--text-light); }
+body.dark-mode .classroom-detail { background: var(--panel-bg); border-color: var(--border); }
+body.dark-mode .classroom-detail-header h2 { color: var(--text-dark); }
+body.dark-mode .classroom-detail-header p { color: var(--text-medium); }
+body.dark-mode .classroom-section-title { color: var(--text-dark); }
+body.dark-mode .classroom-action-item { border-color: var(--border); }
+body.dark-mode .classroom-action-desc { color: var(--text-medium); }
+body.dark-mode .classroom-action-time { color: var(--text-light); }
+body.dark-mode .classroom-task-item { border-color: var(--border); }
+body.dark-mode .classroom-task-name { color: var(--text-dark); }
+body.dark-mode .classroom-task-due { color: var(--text-light); }
+body.dark-mode .classroom-due-item { border-color: var(--border); }
+body.dark-mode .classroom-due-name { color: var(--text-dark); }
+body.dark-mode .classroom-due-date { color: var(--text-medium); }
+body.dark-mode .classroom-empty-icon { color: var(--text-light); }
+body.dark-mode .classroom-empty-text { color: var(--text-medium); }
+body.dark-mode .classroom-toggle-btn { color: var(--text-medium); border-color: var(--border); }
+body.dark-mode .classroom-toggle-btn:hover { background: var(--brand-light); color: var(--brand); border-color: var(--brand); }
 
 
