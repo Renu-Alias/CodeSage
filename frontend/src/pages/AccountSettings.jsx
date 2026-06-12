@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock, ChevronLeft, Check, Eye, EyeOff, Sprout, Terminal } from 'lucide-react';
+import { User, Mail, Lock, ChevronLeft, Check, Eye, EyeOff, Sprout, Terminal, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../ThemeContext.jsx';
 
 export default function AccountSettings({ setCurrentPage }) {
+  const { theme, setTheme } = useTheme();
   const [name, setName] = useState('Student Name');
   const [email, setEmail] = useState('student@example.com');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -123,6 +125,30 @@ export default function AccountSettings({ setCurrentPage }) {
               >
                 <Terminal size={18} />
                 Intermediate
+              </div>
+            </div>
+          </div>
+
+          <hr className="settings-divider" />
+
+          <h4 className="settings-section-title">Appearance</h4>
+
+          <div className="form-group">
+            <label className="form-label">Theme</label>
+            <div className="settings-level-options">
+              <div
+                className={`settings-level-option ${theme === 'light' ? 'active' : ''}`}
+                onClick={() => setTheme('light')}
+              >
+                <Sun size={18} />
+                Light mode
+              </div>
+              <div
+                className={`settings-level-option ${theme === 'dark' ? 'active' : ''}`}
+                onClick={() => setTheme('dark')}
+              >
+                <Moon size={18} />
+                Dark mode
               </div>
             </div>
           </div>
