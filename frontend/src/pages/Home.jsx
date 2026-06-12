@@ -1,8 +1,10 @@
-import React from 'react';
-import { Code2, AlertTriangle, Lightbulb, Compass, Award, Star } from 'lucide-react';
+import React, { useState } from 'react';
+import { Code2, AlertTriangle, Lightbulb, Compass, Award, Star, X, Play, ArrowRight } from 'lucide-react';
 import { LANGUAGES } from '../constants/languages';
 
 export default function Home({ setCurrentPage, setSampleCode, isLoggedIn }) {
+  const [showDemo, setShowDemo] = useState(false);
+
   const handleStartAnalysis = (codeType) => {
     if (codeType === 'demo') {
       setSampleCode({
@@ -23,6 +25,33 @@ export default function Home({ setCurrentPage, setSampleCode, isLoggedIn }) {
 
   return (
     <div className="home-page animate-fade">
+      {/* DEMO OVERLAY */}
+      {showDemo && (
+        <div className="demo-overlay" onClick={() => setShowDemo(false)}>
+          <div className="demo-modal" onClick={e => e.stopPropagation()}>
+            <button className="demo-close" onClick={() => setShowDemo(false)}><X size={20} /></button>
+            <h2>CodeSage in Action</h2>
+            <div className="demo-steps">
+              <div className="demo-step">
+                <div className="demo-step-num">1</div>
+                <div><strong>Submit your code</strong><p>Paste any code snippet from any language.</p></div>
+              </div>
+              <div className="demo-step">
+                <div className="demo-step-num">2</div>
+                <div><strong>AI analyzes instantly</strong><p>Syntax errors, logical bugs, and runtime risks are detected in milliseconds.</p></div>
+              </div>
+              <div className="demo-step">
+                <div className="demo-step-num">3</div>
+                <div><strong>Get plain-English explanations</strong><p>Beginner-friendly breakdowns with analogies, auto-fixes, and line-by-line walkthroughs.</p></div>
+              </div>
+            </div>
+            <button className="btn btn-primary" onClick={() => { setShowDemo(false); setCurrentPage('analyze'); }}>
+              Try it now <ArrowRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. HERO SECTION */}
       <section className="hero-section text-center">
         <div className="container">
@@ -40,8 +69,8 @@ export default function Home({ setCurrentPage, setSampleCode, isLoggedIn }) {
             <button className="btn btn-primary" onClick={() => handleStartAnalysis('default')}>
               <Code2 size={18} /> Analyze my code
             </button>
-            <button className="btn btn-secondary" onClick={() => handleStartAnalysis('demo')}>
-              See a demo
+            <button className="btn btn-secondary" onClick={() => setShowDemo(true)}>
+              <Play size={16} /> See a demo
             </button>
           </div>
 

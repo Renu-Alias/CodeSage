@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { BookOpen, Compass, Award, Star, X, Play, CheckCircle, XCircle, ArrowRight, RefreshCw, Lightbulb } from 'lucide-react';
+import { BookOpen, Compass, Award, Star, CheckCircle, XCircle, ArrowRight, RefreshCw, Lightbulb } from 'lucide-react';
 import { EXERCISES, LANGUAGE_WEAKNESS_MAP } from '../constants/exercises';
 import { LANGUAGES } from '../constants/languages';
 
 export default function Learn({ setCurrentPage }) {
-  const [showDemo, setShowDemo] = useState(false);
   const [selectedLang, setSelectedLang] = useState('Python');
   const [currentQ, setCurrentQ] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -48,49 +47,8 @@ export default function Learn({ setCurrentPage }) {
     { topic: weaknesses[1] || "Edge cases", count: Math.floor(Math.random() * 10 + 5) }
   ];
 
-  const demoSteps = [
-    { code: 'def calculate_average(numbers):', highlight: false },
-    { code: '    total = sum(numbers)', highlight: false },
-    { code: '    return total / len(numbers)', highlight: true, msg: 'Bugs found: division by zero if numbers is empty' },
-  ];
-
   return (
     <div className="learn-page animate-fade container">
-      {/* DEMO OVERLAY */}
-      {showDemo && (
-        <div className="demo-overlay" onClick={() => setShowDemo(false)}>
-          <div className="demo-modal" onClick={e => e.stopPropagation()}>
-            <button className="demo-close" onClick={() => setShowDemo(false)}><X size={20} /></button>
-            <h2>CodeSage in Action</h2>
-            <div className="demo-steps">
-              <div className="demo-step">
-                <div className="demo-step-num">1</div>
-                <div><strong>Submit your code</strong><p>Paste any code snippet from any language.</p></div>
-              </div>
-              <div className="demo-step">
-                <div className="demo-step-num">2</div>
-                <div><strong>AI analyzes instantly</strong><p>Syntax errors, logical bugs, and runtime risks are detected in milliseconds.</p></div>
-              </div>
-              <div className="demo-step">
-                <div className="demo-step-num">3</div>
-                <div><strong>Get plain-English explanations</strong><p>Beginner-friendly breakdowns with analogies, auto-fixes, and line-by-line walkthroughs.</p></div>
-              </div>
-            </div>
-            <div className="demo-code-preview">
-              {demoSteps.map((s, i) => (
-                <div key={i} className={`demo-code-line ${s.highlight ? 'demo-highlight' : ''}`}>
-                  <code>{s.code}</code>
-                  {s.highlight && <span className="demo-msg">{s.msg}</span>}
-                </div>
-              ))}
-            </div>
-            <button className="btn btn-primary" onClick={() => { setShowDemo(false); setCurrentPage('analyze'); }}>
-              Try it now <ArrowRight size={16} />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 1. HERO BLOCK */}
       <section className="learn-hero text-center">
         <h1 className="hero-title gradient-text">Master coding with AI by your side</h1>
@@ -101,9 +59,6 @@ export default function Learn({ setCurrentPage }) {
         <div className="hero-actions">
           <button className="btn btn-primary" onClick={() => setCurrentPage('analyze')}>
             Start learning
-          </button>
-          <button className="btn btn-secondary" onClick={() => setShowDemo(true)}>
-            <Play size={16} /> Watch demo
           </button>
         </div>
       </section>
