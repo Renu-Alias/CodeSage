@@ -5,6 +5,7 @@ import { useTheme } from '../ThemeContext.jsx';
 export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsLoggedIn, user }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showAppearance, setShowAppearance] = useState(false);
   const notifRef = useRef(null);
   const settingsRef = useRef(null);
 
@@ -55,9 +56,8 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
 
   const { theme, setTheme } = useTheme();
 
-  const handleAppearance = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-    setSettingsOpen(false);
+  const handleToggleAppearance = () => {
+    setShowAppearance(!showAppearance);
   };
 
   const handleHelp = () => {
@@ -71,7 +71,7 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
 
   const settingsItems = [
     { icon: <User size={16} />, label: "Account Settings", onClick: () => setCurrentPage('account-settings') },
-    { icon: <Palette size={16} />, label: "Appearance", onClick: handleAppearance },
+    { icon: <Palette size={16} />, label: "Appearance", onClick: handleToggleAppearance },
     { icon: <HelpCircle size={16} />, label: "Help & Support", onClick: handleHelp },
     { icon: <LogOut size={16} />, label: "Log Out", onClick: handleLogout },
   ];
@@ -138,21 +138,38 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
                 <button className="icon-btn" title="Settings" onClick={() => { setSettingsOpen(!settingsOpen); setNotifOpen(false); }}>
                   <Settings size={20} className="header-icon" />
                 </button>
-                {settingsOpen && (
-                  <div className="dropdown-menu dropdown-settings">
-                    <div className="dropdown-header">Settings</div>
-                    <div className="dropdown-body">
-                      {settingsItems.map((s, i) => (
-                        <div className="dropdown-item dropdown-item-single" key={i} onClick={() => { s.onClick(); setSettingsOpen(false); }}>
-                          <div className="dropdown-item-icon">{s.icon}</div>
-                          <div className="dropdown-item-content">
-                            <div className="dropdown-item-title">{s.label}</div>
+                  {settingsOpen && (
+                    <div className="dropdown-menu dropdown-settings">
+                      <div className="dropdown-header">Settings</div>
+                      <div className="dropdown-body">
+                        {settingsItems.map((s, i) => (
+                          <div className="dropdown-item dropdown-item-single" key={i} onClick={() => { s.onClick(); if (s.label !== 'Appearance') setSettingsOpen(false); }}>
+                            <div className="dropdown-item-icon">{s.icon}</div>
+                            <div className={`dropdown-item-content ${s.label === 'Appearance' ? 'dropdown-item-with-sub' : ''}`}>
+                              <div className="dropdown-item-title">{s.label}</div>
+                              {s.label === 'Appearance' && <span className={`dropdown-chevron ${showAppearance ? 'open' : ''}`}>▸</span>}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                        {showAppearance && (
+                          <div className="appearance-submenu">
+                            <div className={`dropdown-item dropdown-item-single ${theme === 'light' ? 'active' : ''}`} onClick={() => { setTheme('light'); setSettingsOpen(false); }}>
+                              <div className="dropdown-item-icon"><span className="submenu-dot" /></div>
+                              <div className="dropdown-item-content">
+                                <div className="dropdown-item-title">Light Mode</div>
+                              </div>
+                            </div>
+                            <div className={`dropdown-item dropdown-item-single ${theme === 'dark' ? 'active' : ''}`} onClick={() => { setTheme('dark'); setSettingsOpen(false); }}>
+                              <div className="dropdown-item-icon"><span className="submenu-dot" /></div>
+                              <div className="dropdown-item-content">
+                                <div className="dropdown-item-title">Dark Mode</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
 
               <div 
