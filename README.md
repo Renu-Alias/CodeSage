@@ -221,7 +221,6 @@ FRONTEND_URL=http://localhost:5173
 VITE_API_URL=http://localhost:8000
 ```
 
-> `.env` files contain local configuration and secrets. They are listed in `.gitignore` and **must never be committed** to the repository.
 
 ### Running the Project
 
@@ -244,18 +243,5 @@ npm run dev
 
 ---
 
-## Contributing
-
-Contributions are welcome! To get started:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Commit your changes (`git commit -m 'Add your feature'`)
-4. Push to the branch (`git push origin feature/your-feature`)
-5. Open a Pull Request
-
-Please open an issue first for major changes so we can discuss the approach.
-
----
 
 *CodeSage — Debug smarter. Learn faster. Code better.*
