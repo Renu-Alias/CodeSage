@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bell, Settings, Gift, Megaphone, MessageSquare, Star, User, Palette, HelpCircle, LogOut } from 'lucide-react';
+import { useTheme } from '../ThemeContext.jsx';
 
 export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsLoggedIn, user }) {
   const [notifOpen, setNotifOpen] = useState(false);
@@ -52,8 +53,10 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
     setNotifOpen(false);
   };
 
+  const { theme, setTheme } = useTheme();
+
   const handleAppearance = () => {
-    document.body.classList.toggle('dark-mode');
+    setTheme(theme === 'dark' ? 'light' : 'dark');
     setSettingsOpen(false);
   };
 
