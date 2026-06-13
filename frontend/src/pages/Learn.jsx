@@ -185,7 +185,7 @@ export default function Learn({ setCurrentPage }) {
         {/* LANGUAGE PILLS — scrollable */}
         <div className="practice-lang-pills-wrapper">
           <div className="practice-lang-pills" ref={pillsRef}>
-            {allLangs.slice(0, 14).map(lang => (
+            {allLangs.map(lang => (
               <button
                 key={lang}
                 className={`practice-lang-pill${selectedLang === lang ? ' active' : ''}`}

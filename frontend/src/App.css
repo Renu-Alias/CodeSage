@@ -3213,8 +3213,8 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover { background: #3a3a54; }
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding-bottom: 4px;
-  margin-bottom: 32px;
+  padding: 4px 0 4px;
+  margin-bottom: 28px;
 }
 
 .practice-lang-pills-wrapper::-webkit-scrollbar {
