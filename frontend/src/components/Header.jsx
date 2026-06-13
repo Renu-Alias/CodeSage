@@ -140,40 +140,43 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
                       <div className="dropdown-body">
                         {settingsItems.map((s, i) =>
                           s.label === 'Appearance' ? (
-                            <div
-                              className="dropdown-item dropdown-item-single"
-                              key={i}
-                              onClick={() => setShowAppearance(!showAppearance)}
-                            >
-                              <div className="dropdown-item-icon">{s.icon}</div>
-                              <div className="dropdown-item-content">
-                                <div className="appearance-top-row">
+                            <div key={i}>
+                              <div
+                                className="dropdown-item dropdown-item-single"
+                                onClick={() => setShowAppearance(!showAppearance)}
+                              >
+                                <div className="dropdown-item-icon">{s.icon}</div>
+                                <div className="dropdown-item-content">
                                   <span className="dropdown-item-title">{s.label}</span>
-                                  {showAppearance && (
-                                    <button
-                                      className={`appearance-pill${theme === 'light' ? ' active' : ''}`}
-                                      onClick={e => { e.stopPropagation(); setTheme('light'); setSettingsOpen(false); setShowAppearance(false); }}
-                                    >
-                                      <Sun size={13} /> Light
-                                    </button>
-                                  )}
-                                  <span className={`dropdown-chevron ${showAppearance ? 'open' : ''}`}>▾</span>
                                 </div>
-                                {showAppearance && (
-                                  <button
-                                    className={`appearance-pill appearance-pill-dark${theme === 'dark' ? ' active' : ''}`}
-                                    onClick={e => { e.stopPropagation(); setTheme('dark'); setSettingsOpen(false); setShowAppearance(false); }}
-                                  >
-                                    <Moon size={13} /> Dark
-                                  </button>
-                                )}
+                                <span className={`dropdown-chevron ${showAppearance ? 'open' : ''}`}>▶</span>
                               </div>
+                              {showAppearance && (
+                                <div className="appearance-sub">
+                                  <div
+                                    className={`appearance-sub-item${theme === 'light' ? ' active' : ''}`}
+                                    onClick={() => { setTheme('light'); setSettingsOpen(false); setShowAppearance(false); }}
+                                  >
+                                    <span className="appearance-sub-icon"><Sun size={14} /></span>
+                                    <span className="appearance-sub-label">Light</span>
+                                    {theme === 'light' && <span className="appearance-sub-check">✓</span>}
+                                  </div>
+                                  <div
+                                    className={`appearance-sub-item${theme === 'dark' ? ' active' : ''}`}
+                                    onClick={() => { setTheme('dark'); setSettingsOpen(false); setShowAppearance(false); }}
+                                  >
+                                    <span className="appearance-sub-icon"><Moon size={14} /></span>
+                                    <span className="appearance-sub-label">Dark</span>
+                                    {theme === 'dark' && <span className="appearance-sub-check">✓</span>}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div className="dropdown-item dropdown-item-single" key={i} onClick={() => { s.onClick(); setSettingsOpen(false); }}>
                               <div className="dropdown-item-icon">{s.icon}</div>
                               <div className="dropdown-item-content">
-                                <div className="dropdown-item-title">{s.label}</div>
+                                <span className="dropdown-item-title">{s.label}</span>
                               </div>
                             </div>
                           )
