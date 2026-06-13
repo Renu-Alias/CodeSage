@@ -154,8 +154,8 @@ export default function Learn({ setCurrentPage }) {
       {/* HERO */}
       <section className="learn-hero text-center">
         <div className="practice-hero-gradient" />
-        <h1 className="hero-title gradient-text">Practice Exercises</h1>
-        <p className="hero-subtitle">Master coding concepts through interactive quizzes and challenges.</p>
+        <h1 className="hero-title gradient-text">Master coding with AI by your side</h1>
+        <p className="hero-subtitle">Accelerate your programming journey with intelligent code analysis, personalized tutoring, and real-time step-by-step logic explanations designed for the modern developer.</p>
 
         {/* STATS ROW */}
         <div className="practice-stats-row">
