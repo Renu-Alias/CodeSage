@@ -3146,11 +3146,20 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover { background: #3a3a54; }
 ---------------------------------------------------- */
 
 /* Hero gradient */
+.learn-page {
+  position: relative;
+}
+
 .practice-hero-gradient {
   position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 600px 300px at 50% 0%, rgba(99,102,241,0.08) 0%, transparent 70%);
+  top: -72px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  height: 500px;
+  background: radial-gradient(ellipse 700px 350px at 50% 0%, rgba(99,102,241,0.12) 0%, transparent 70%);
   pointer-events: none;
+  z-index: 0;
 }
 
 /* Stats row */
@@ -3159,7 +3168,7 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover { background: #3a3a54; }
   gap: 16px;
   justify-content: center;
   flex-wrap: wrap;
-  margin: 24px 0;
+  margin: 56px 0 24px;
 }
 
 .practice-stat-card {

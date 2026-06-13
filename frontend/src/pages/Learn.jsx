@@ -151,9 +151,9 @@ export default function Learn({ setCurrentPage }) {
 
   return (
     <div className="learn-page animate-fade container">
+      <div className="practice-hero-gradient" />
       {/* HERO */}
       <section className="learn-hero text-center">
-        <div className="practice-hero-gradient" />
         <h1 className="hero-title gradient-text">Master coding with AI by your side</h1>
         <p className="hero-subtitle">Accelerate your programming journey with intelligent code analysis, personalized tutoring, and real-time step-by-step logic explanations designed for the modern developer.</p>
 
