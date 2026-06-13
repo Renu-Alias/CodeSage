@@ -1,7 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BookOpen, Compass, Award, Star, CheckCircle, XCircle, ArrowRight, RefreshCw, Lightbulb } from 'lucide-react';
 import { EXERCISES, LANGUAGE_WEAKNESS_MAP } from '../constants/exercises';
 import { LANGUAGES } from '../constants/languages';
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 export default function Learn({ setCurrentPage }) {
   const [selectedLang, setSelectedLang] = useState('Python');
@@ -10,8 +19,22 @@ export default function Learn({ setCurrentPage }) {
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(0);
   const [showResult, setShowResult] = useState(false);
+  const [shuffled, setShuffled] = useState(() => shuffle(EXERCISES.Python));
 
-  const exercises = EXERCISES[selectedLang] || EXERCISES.Python;
+  const exercises = shuffled;
+
+  useEffect(() => {
+    setShuffled(shuffle(EXERCISES[selectedLang] || EXERCISES.Python));
+    setCurrentQ(0);
+    setSelectedAnswer(null);
+    setScore(0);
+    setAnswered(0);
+    setShowResult(false);
+  }, [selectedLang]);
+
+  useEffect(() => {
+    setShuffled(shuffle(EXERCISES[selectedLang] || EXERCISES.Python));
+  }, []);
 
   const handleAnswer = (idx) => {
     if (selectedAnswer !== null) return;
@@ -40,7 +63,6 @@ export default function Learn({ setCurrentPage }) {
   };
 
   const weaknesses = LANGUAGE_WEAKNESS_MAP[selectedLang] || [];
-  const allLangs = Object.keys(EXERCISES);
   const weakAreas = [
     { topic: "Syntax correctness", count: Math.floor(Math.random() * 15 + 10) },
     { topic: weaknesses[0] || "Logic errors", count: Math.floor(Math.random() * 12 + 8) },
@@ -60,6 +82,82 @@ export default function Learn({ setCurrentPage }) {
           <button className="btn btn-primary" onClick={() => setCurrentPage('analyze')}>
             Start learning
           </button>
+        </div>
+
+        {/* Practice exercises directly below hero */}
+        <div className="exercise-section hero-exercises">
+          <div className="exercise-header">
+            <h2><Lightbulb size={22} /> Practice exercises</h2>
+            <p>Test your knowledge with language-specific quizzes. Choose a language below.</p>
+          </div>
+
+          <div className="exercise-controls">
+            <select
+              className="select-dropdown exercise-lang-select"
+              value={selectedLang}
+              onChange={(e) => { setSelectedLang(e.target.value); handleRestart(); }}
+            >
+              {Object.keys(EXERCISES).map(lang => (
+                <option key={lang} value={lang}>{lang}</option>
+              ))}
+            </select>
+            <div className="exercise-weakness-hints">
+              {weakAreas.map((w, i) => (
+                <span key={i} className="badge badge-weakness">{w.topic}: {w.count} issues</span>
+              ))}
+            </div>
+          </div>
+
+          <div className="exercise-card card">
+            {showResult ? (
+              <div className="exercise-result">
+                <div className="result-icon">{score === exercises.length ? <CheckCircle size={48} /> : <Star size={48} />}</div>
+                <h3>{score === exercises.length ? 'Perfect score!' : 'Practice makes perfect!'}</h3>
+                <p>You got <strong>{score}</strong> out of <strong>{exercises.length}</strong> correct in {selectedLang}.</p>
+                <button className="btn btn-primary" onClick={handleRestart}>
+                  <RefreshCw size={16} /> Try again
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="exercise-progress">
+                  <span>Question {currentQ + 1} of {exercises.length}</span>
+                  <span className="exercise-score">Score: {score}/{answered}</span>
+                </div>
+                <div className="exercise-question">
+                  <p>{exercises[currentQ].question}</p>
+                </div>
+                <div className="exercise-options">
+                  {exercises[currentQ].options.map((opt, idx) => {
+                    let cls = 'exercise-option';
+                    if (selectedAnswer !== null) {
+                      if (idx === exercises[currentQ].correct) cls += ' correct';
+                      else if (idx === selectedAnswer) cls += ' wrong';
+                    }
+                    return (
+                      <div key={idx} className={cls} onClick={() => handleAnswer(idx)}>
+                        <span className="option-letter">{String.fromCharCode(65 + idx)}</span>
+                        <span className="option-text">{opt}</span>
+                        {selectedAnswer !== null && idx === exercises[currentQ].correct && <CheckCircle size={18} className="option-icon correct-icon" />}
+                        {selectedAnswer !== null && idx === selectedAnswer && idx !== exercises[currentQ].correct && <XCircle size={18} className="option-icon wrong-icon" />}
+                      </div>
+                    );
+                  })}
+                </div>
+                {selectedAnswer !== null && (
+                  <div className="exercise-explanation">
+                    <Lightbulb size={16} />
+                    <span>{exercises[currentQ].explanation}</span>
+                  </div>
+                )}
+                {selectedAnswer !== null && (
+                  <button className="btn btn-primary exercise-next" onClick={handleNext}>
+                    {currentQ + 1 < exercises.length ? 'Next question' : 'See results'} <ArrowRight size={16} />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </section>
 
@@ -144,82 +242,6 @@ export default function Learn({ setCurrentPage }) {
               <div className="progress-bar-fill" style={{ width: '75%' }} />
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* 4. EXERCISE SECTION */}
-      <section className="exercise-section" id="exercises">
-        <div className="exercise-header">
-          <h2><Lightbulb size={22} /> Practice exercises</h2>
-          <p>Test your knowledge with language-specific quizzes. Choose a language below.</p>
-        </div>
-
-        <div className="exercise-controls">
-          <select
-            className="select-dropdown exercise-lang-select"
-            value={selectedLang}
-            onChange={(e) => { setSelectedLang(e.target.value); handleRestart(); }}
-          >
-            {allLangs.map(lang => (
-              <option key={lang} value={lang}>{lang}</option>
-            ))}
-          </select>
-          <div className="exercise-weakness-hints">
-            {weakAreas.map((w, i) => (
-              <span key={i} className="badge badge-weakness">{w.topic}: {w.count} issues</span>
-            ))}
-          </div>
-        </div>
-
-        <div className="exercise-card card">
-          {showResult ? (
-            <div className="exercise-result">
-              <div className="result-icon">{score === exercises.length ? <CheckCircle size={48} /> : <Star size={48} />}</div>
-              <h3>{score === exercises.length ? 'Perfect score!' : 'Practice makes perfect!'}</h3>
-              <p>You got <strong>{score}</strong> out of <strong>{exercises.length}</strong> correct in {selectedLang}.</p>
-              <button className="btn btn-primary" onClick={handleRestart}>
-                <RefreshCw size={16} /> Try again
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="exercise-progress">
-                <span>Question {currentQ + 1} of {exercises.length}</span>
-                <span className="exercise-score">Score: {score}/{answered}</span>
-              </div>
-              <div className="exercise-question">
-                <p>{exercises[currentQ].question}</p>
-              </div>
-              <div className="exercise-options">
-                {exercises[currentQ].options.map((opt, idx) => {
-                  let cls = 'exercise-option';
-                  if (selectedAnswer !== null) {
-                    if (idx === exercises[currentQ].correct) cls += ' correct';
-                    else if (idx === selectedAnswer) cls += ' wrong';
-                  }
-                  return (
-                    <div key={idx} className={cls} onClick={() => handleAnswer(idx)}>
-                      <span className="option-letter">{String.fromCharCode(65 + idx)}</span>
-                      <span className="option-text">{opt}</span>
-                      {selectedAnswer !== null && idx === exercises[currentQ].correct && <CheckCircle size={18} className="option-icon correct-icon" />}
-                      {selectedAnswer !== null && idx === selectedAnswer && idx !== exercises[currentQ].correct && <XCircle size={18} className="option-icon wrong-icon" />}
-                    </div>
-                  );
-                })}
-              </div>
-              {selectedAnswer !== null && (
-                <div className="exercise-explanation">
-                  <Lightbulb size={16} />
-                  <span>{exercises[currentQ].explanation}</span>
-                </div>
-              )}
-              {selectedAnswer !== null && (
-                <button className="btn btn-primary exercise-next" onClick={handleNext}>
-                  {currentQ + 1 < exercises.length ? 'Next question' : 'See results'} <ArrowRight size={16} />
-                </button>
-              )}
-            </>
-          )}
         </div>
       </section>
 
