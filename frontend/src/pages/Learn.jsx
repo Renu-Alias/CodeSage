@@ -1,7 +1,34 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { BookOpen, Compass, Award, Star, CheckCircle, XCircle, ArrowRight, RefreshCw, Lightbulb } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { BookOpen, Compass, Award, Star, CheckCircle, XCircle, ArrowRight, RefreshCw, Lightbulb, Flame, Zap, Trophy, Code, Hash, Terminal, Braces, Globe, Database, FileJson, FileType, Cpu } from 'lucide-react';
 import { EXERCISES, LANGUAGE_WEAKNESS_MAP } from '../constants/exercises';
-import { LANGUAGES } from '../constants/languages';
+
+const LANG_ICONS = {
+  Python: <Terminal size={18} />,
+  JavaScript: <FileJson size={18} />,
+  TypeScript: <FileType size={18} />,
+  'C++': <Code size={18} />,
+  Java: <Cpu size={18} />,
+  Go: <Terminal size={18} />,
+  Rust: <Braces size={18} />,
+  C: <Code size={18} />,
+  Dart: <Hash size={18} />,
+  Ruby: <GemIcon />,
+  PHP: <Code size={18} />,
+  Swift: <Braces size={18} />,
+  Kotlin: <Terminal size={18} />,
+  'C#': <Hash size={18} />,
+  SQL: <Database size={18} />,
+  HTML: <Globe size={18} />,
+  CSS: <FileType size={18} />,
+};
+
+function GemIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3h12l4 6-10 12L2 9Z" />
+    </svg>
+  );
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -12,6 +39,17 @@ function shuffle(arr) {
   return a;
 }
 
+function pickUnseen(allQuestions, seenSet) {
+  const unseen = allQuestions
+    .map((q, i) => ({ q, i }))
+    .filter(({ i }) => !seenSet.has(i));
+  if (unseen.length >= 2) {
+    const picked = shuffle(unseen).slice(0, allQuestions.length);
+    return picked.map(({ q }) => q);
+  }
+  return shuffle(allQuestions);
+}
+
 export default function Learn({ setCurrentPage }) {
   const [selectedLang, setSelectedLang] = useState('Python');
   const [currentQ, setCurrentQ] = useState(0);
@@ -20,20 +58,40 @@ export default function Learn({ setCurrentPage }) {
   const [answered, setAnswered] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [shuffled, setShuffled] = useState(() => shuffle(EXERCISES.Python));
+  const [xp, setXp] = useState(() => Math.floor(Math.random() * 200 + 200));
+  const [streak, setStreak] = useState(() => Math.floor(Math.random() * 10 + 1));
+  const [solved, setSolved] = useState(() => Math.floor(Math.random() * 30 + 20));
+  const [seenIndices, setSeenIndices] = useState(() => ({}));
+  const pillsRef = useRef(null);
+  const isPerfectRef = useRef(false);
+  const currentIndicesRef = useRef(null);
 
   const exercises = shuffled;
 
+  const allQuestions = EXERCISES[selectedLang] || EXERCISES.Python;
+
   useEffect(() => {
-    setShuffled(shuffle(EXERCISES[selectedLang] || EXERCISES.Python));
+    currentIndicesRef.current = exercises.map((q) => allQuestions.indexOf(q));
+  }, [exercises, allQuestions]);
+
+  const initLang = (lang, fresh) => {
+    const pool = fresh
+      ? pickUnseen(allQuestions, seenIndices[lang] || new Set())
+      : shuffle(allQuestions);
+    setShuffled(pool);
     setCurrentQ(0);
     setSelectedAnswer(null);
     setScore(0);
     setAnswered(0);
     setShowResult(false);
+  };
+
+  useEffect(() => {
+    initLang(selectedLang, false);
   }, [selectedLang]);
 
   useEffect(() => {
-    setShuffled(shuffle(EXERCISES[selectedLang] || EXERCISES.Python));
+    initLang(selectedLang, false);
   }, []);
 
   const handleAnswer = (idx) => {
@@ -42,6 +100,7 @@ export default function Learn({ setCurrentPage }) {
     setAnswered(answered + 1);
     if (idx === exercises[currentQ].correct) {
       setScore(score + 1);
+      setXp(xp + 10);
     }
   };
 
@@ -50,11 +109,35 @@ export default function Learn({ setCurrentPage }) {
       setCurrentQ(currentQ + 1);
       setSelectedAnswer(null);
     } else {
+      isPerfectRef.current = score === exercises.length;
       setShowResult(true);
+      setSolved(solved + score);
     }
   };
 
   const handleRestart = () => {
+    const pool = score === exercises.length
+      ? pickUnseen(allQuestions, seenIndices[selectedLang] || new Set())
+      : shuffle(allQuestions);
+    const seen = { ...seenIndices };
+    if (score === exercises.length) {
+      const idxSet = new Set(seen[selectedLang] || []);
+      currentIndicesRef.current?.forEach((i) => idxSet.add(i));
+      seen[selectedLang] = idxSet;
+    }
+    setSeenIndices(seen);
+    setShuffled(pool);
+    setCurrentQ(0);
+    setSelectedAnswer(null);
+    setScore(0);
+    setAnswered(0);
+    setShowResult(false);
+  };
+
+  const handleLangChange = (lang) => {
+    setSelectedLang(lang);
+    const pool = shuffle(EXERCISES[lang] || EXERCISES.Python);
+    setShuffled(pool);
     setCurrentQ(0);
     setSelectedAnswer(null);
     setScore(0);
@@ -63,204 +146,170 @@ export default function Learn({ setCurrentPage }) {
   };
 
   const weaknesses = LANGUAGE_WEAKNESS_MAP[selectedLang] || [];
-  const weakAreas = [
-    { topic: "Syntax correctness", count: Math.floor(Math.random() * 15 + 10) },
-    { topic: weaknesses[0] || "Logic errors", count: Math.floor(Math.random() * 12 + 8) },
-    { topic: weaknesses[1] || "Edge cases", count: Math.floor(Math.random() * 10 + 5) }
-  ];
+  const allLangs = Object.keys(EXERCISES);
+  const progressPct = exercises.length > 0 ? (answered / exercises.length) * 100 : 0;
 
   return (
     <div className="learn-page animate-fade container">
-      {/* 1. HERO BLOCK */}
+      {/* HERO */}
       <section className="learn-hero text-center">
-        <h1 className="hero-title gradient-text">Master coding with AI by your side</h1>
-        <p className="hero-subtitle">
-          Accelerate your programming journey with intelligent code analysis, personalized tutoring, and real-time step-by-step logic explanations designed for the modern developer.
-        </p>
-        
-        <div className="hero-actions">
-          <button className="btn btn-primary" onClick={() => setCurrentPage('analyze')}>
-            Start learning
-          </button>
-        </div>
+        <div className="practice-hero-gradient" />
+        <h1 className="hero-title gradient-text">Practice Exercises</h1>
+        <p className="hero-subtitle">Master coding concepts through interactive quizzes and challenges.</p>
 
-        {/* Practice exercises directly below hero */}
-        <div className="exercise-section hero-exercises">
-          <div className="exercise-header">
-            <h2><Lightbulb size={22} /> Practice exercises</h2>
-            <p>Test your knowledge with language-specific quizzes. Choose a language below.</p>
-          </div>
-
-          <div className="exercise-controls">
-            <select
-              className="select-dropdown exercise-lang-select"
-              value={selectedLang}
-              onChange={(e) => { setSelectedLang(e.target.value); handleRestart(); }}
-            >
-              {Object.keys(EXERCISES).map(lang => (
-                <option key={lang} value={lang}>{lang}</option>
-              ))}
-            </select>
-            <div className="exercise-weakness-hints">
-              {weakAreas.map((w, i) => (
-                <span key={i} className="badge badge-weakness">{w.topic}: {w.count} issues</span>
-              ))}
+        {/* STATS ROW */}
+        <div className="practice-stats-row">
+          <div className="practice-stat-card">
+            <div className="practice-stat-icon streak"><Flame size={20} /></div>
+            <div className="practice-stat-info">
+              <span className="practice-stat-value">{streak} Day Streak</span>
+              <span className="practice-stat-label">Keep going!</span>
             </div>
           </div>
+          <div className="practice-stat-card">
+            <div className="practice-stat-icon xp"><Zap size={20} /></div>
+            <div className="practice-stat-info">
+              <span className="practice-stat-value">{xp} XP</span>
+              <span className="practice-stat-label">Total earned</span>
+            </div>
+          </div>
+          <div className="practice-stat-card">
+            <div className="practice-stat-icon solved"><CheckCircle size={20} /></div>
+            <div className="practice-stat-info">
+              <span className="practice-stat-value">{solved} Solved</span>
+              <span className="practice-stat-label">Questions</span>
+            </div>
+          </div>
+        </div>
 
-          <div className="exercise-card card">
-            {showResult ? (
-              <div className="exercise-result">
-                <div className="result-icon">{score === exercises.length ? <CheckCircle size={48} /> : <Star size={48} />}</div>
-                <h3>{score === exercises.length ? 'Perfect score!' : 'Practice makes perfect!'}</h3>
-                <p>You got <strong>{score}</strong> out of <strong>{exercises.length}</strong> correct in {selectedLang}.</p>
-                <button className="btn btn-primary" onClick={handleRestart}>
-                  <RefreshCw size={16} /> Try again
-                </button>
+        {/* LANGUAGE PILLS — scrollable */}
+        <div className="practice-lang-pills-wrapper">
+          <div className="practice-lang-pills" ref={pillsRef}>
+            {allLangs.slice(0, 14).map(lang => (
+              <button
+                key={lang}
+                className={`practice-lang-pill${selectedLang === lang ? ' active' : ''}`}
+                onClick={() => handleLangChange(lang)}
+              >
+                <span className="practice-lang-icon">{LANG_ICONS[lang] || <Code size={18} />}</span>
+                <span className="practice-lang-name">{lang}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CATEGORY CARDS */}
+      <section className="practice-categories">
+        {weaknesses.slice(0, 3).map((w, i) => {
+          const count = Math.floor(Math.random() * 15 + 10);
+          const pct = Math.min(100, Math.floor(Math.random() * 60 + 30));
+          const colors = ['#6366F1', '#8B5CF6', '#F59E0B'];
+          return (
+            <div key={i} className="practice-category-card" style={{ '--accent': colors[i] }}>
+              <div className="practice-category-top">
+                <span className="practice-category-name">{w}</span>
+                <span className="practice-category-count">{count} issues</span>
               </div>
-            ) : (
-              <>
-                <div className="exercise-progress">
-                  <span>Question {currentQ + 1} of {exercises.length}</span>
-                  <span className="exercise-score">Score: {score}/{answered}</span>
-                </div>
-                <div className="exercise-question">
-                  <p>{exercises[currentQ].question}</p>
-                </div>
-                <div className="exercise-options">
-                  {exercises[currentQ].options.map((opt, idx) => {
-                    let cls = 'exercise-option';
-                    if (selectedAnswer !== null) {
-                      if (idx === exercises[currentQ].correct) cls += ' correct';
-                      else if (idx === selectedAnswer) cls += ' wrong';
-                    }
-                    return (
-                      <div key={idx} className={cls} onClick={() => handleAnswer(idx)}>
-                        <span className="option-letter">{String.fromCharCode(65 + idx)}</span>
-                        <span className="option-text">{opt}</span>
-                        {selectedAnswer !== null && idx === exercises[currentQ].correct && <CheckCircle size={18} className="option-icon correct-icon" />}
-                        {selectedAnswer !== null && idx === selectedAnswer && idx !== exercises[currentQ].correct && <XCircle size={18} className="option-icon wrong-icon" />}
-                      </div>
-                    );
-                  })}
-                </div>
-                {selectedAnswer !== null && (
-                  <div className="exercise-explanation">
-                    <Lightbulb size={16} />
-                    <span>{exercises[currentQ].explanation}</span>
+              <div className="practice-category-bar-bg">
+                <div className="practice-category-bar-fill" style={{ width: `${pct}%`, background: colors[i] }} />
+              </div>
+              <span className="practice-category-pct">{pct}%</span>
+            </div>
+          );
+        })}
+      </section>
+
+      {/* QUIZ CARD */}
+      <section className="practice-quiz-section">
+        {showResult ? (
+          <div className="practice-quiz-card">
+            <div className="practice-result">
+              <div className={`practice-result-icon ${score === exercises.length ? 'perfect' : 'good'}`}>
+                {score === exercises.length ? <Trophy size={56} /> : <Star size={56} />}
+              </div>
+              <h3 className="practice-result-title">
+                {score === exercises.length ? 'Perfect score!' : 'Practice makes perfect!'}
+              </h3>
+              <p className="practice-result-desc">
+                You got <strong>{score}</strong> out of <strong>{exercises.length}</strong> correct in {selectedLang}.
+              </p>
+              <div className="practice-result-xp">+{score * 10} XP earned</div>
+              <button className="btn btn-primary practice-restart-btn" onClick={handleRestart}>
+                <RefreshCw size={16} /> {score === exercises.length ? 'Take another test' : 'Try again'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* PROGRESS BAR */}
+            <div className="practice-progress-bar-container">
+              <div className="practice-progress-label-row">
+                <span className="practice-progress-label">Progress</span>
+                <span className="practice-progress-pct">{Math.round(progressPct)}%</span>
+              </div>
+              <div className="practice-progress-bg">
+                <div className="practice-progress-fill" style={{ width: `${progressPct}%` }} />
+              </div>
+            </div>
+
+            {/* STEP INDICATOR */}
+            <div className="practice-step-dots">
+              {exercises.map((_, i) => (
+                <span key={i} className={`practice-step-dot${i === currentQ ? ' active' : ''}${i < currentQ ? ' done' : ''}`} />
+              ))}
+            </div>
+
+            <div className="practice-quiz-card">
+              <div className="practice-quiz-header">
+                <span className="practice-quiz-counter">Question {currentQ + 1} of {exercises.length}</span>
+                <span className="practice-quiz-score"><Star size={14} /> {score}/{answered}</span>
+              </div>
+
+              <div className="practice-question">
+                <p>{exercises[currentQ].question}</p>
+              </div>
+
+              <div className="practice-options">
+                {exercises[currentQ].options.map((opt, idx) => {
+                  let cls = 'practice-option';
+                  if (selectedAnswer !== null) {
+                    if (idx === exercises[currentQ].correct) cls += ' correct';
+                    else if (idx === selectedAnswer) cls += ' wrong';
+                  }
+                  return (
+                    <div key={idx} className={cls} onClick={() => handleAnswer(idx)}>
+                      <span className="practice-option-letter">{String.fromCharCode(65 + idx)}</span>
+                      <span className="practice-option-text">{opt}</span>
+                      {selectedAnswer !== null && idx === exercises[currentQ].correct && <CheckCircle size={20} className="practice-option-check" />}
+                      {selectedAnswer !== null && idx === selectedAnswer && idx !== exercises[currentQ].correct && <XCircle size={20} className="practice-option-x" />}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {selectedAnswer !== null && (
+                <div className="practice-explanation">
+                  <div className="practice-explanation-icon">
+                    {selectedAnswer === exercises[currentQ].correct ? <CheckCircle size={20} /> : <XCircle size={20} />}
                   </div>
-                )}
-                {selectedAnswer !== null && (
-                  <button className="btn btn-primary exercise-next" onClick={handleNext}>
-                    {currentQ + 1 < exercises.length ? 'Next question' : 'See results'} <ArrowRight size={16} />
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      </section>
+                  <div className="practice-explanation-content">
+                    <span className="practice-explanation-label">
+                      {selectedAnswer === exercises[currentQ].correct ? 'Correct!' : 'Not quite'}
+                    </span>
+                    <p className="practice-explanation-text">{exercises[currentQ].explanation}</p>
+                  </div>
+                </div>
+              )}
 
-      {/* 2. APP SCREENSHOT WRAPPER */}
-      <section className="learn-app-preview">
-        <div className="monitor-frame card">
-          <div className="monitor-screen">
-            <div className="workspace-header">
-              <span className="dot dot-red" />
-              <span className="dot dot-yellow" />
-              <span className="dot dot-green" />
-              <div className="workspace-title">CodeSage Workspace - Recursion Solver</div>
+              {selectedAnswer !== null && (
+                <button className="btn btn-primary practice-next-btn" onClick={handleNext}>
+                  {currentQ + 1 < exercises.length ? 'Next question' : 'See results'} <ArrowRight size={16} />
+                </button>
+              )}
             </div>
-            
-            <div className="workspace-body font-mono">
-              <div className="workspace-sidebar">
-                <div className="sidebar-item active">fibonacci.py</div>
-                <div className="sidebar-item">binary_search.cpp</div>
-                <div className="sidebar-item">quicksort.js</div>
-              </div>
-              <div className="workspace-editor">
-                <div className="code-line"><span className="keyword">def</span> <span className="func">fibonacci</span>(n):</div>
-                <div className="code-line">    <span className="comment"># Tutoring Insight: Base cases check</span></div>
-                <div className="code-line">    <span className="keyword">if</span> n &lt;= <span className="num">1</span>:</div>
-                <div className="code-line">        <span className="keyword">return</span> n</div>
-                <div className="code-line">    <span className="keyword">return</span> fibonacci(n-<span className="num">1</span>) + fibonacci(n-<span className="num">2</span>)</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. CORE TUTORING FEATURES ROW */}
-      <section className="tutoring-features-grid">
-        <div className="tutoring-card card">
-          <div className="icon-wrapper">
-            <BookOpen size={20} color="var(--brand)" />
-          </div>
-          <h3>Instant analysis</h3>
-          <p>Receive immediate feedback on your code syntax, logic, and efficiency with our AI engine.</p>
-          
-          <div className="embedded-preview-box code-embed font-mono">
-            <div className="code-line"><span className="keyword">function</span> <span className="func">analyze</span>(code) &#123;</div>
-            <div className="code-line">  <span className="keyword">const</span> result = AI.process(code);</div>
-            <div className="code-line">  <span className="keyword">return</span> result.feedback;</div>
-            <div className="code-line">&#125;</div>
-          </div>
-        </div>
-
-        <div className="tutoring-card card">
-          <div className="icon-wrapper">
-            <Compass size={20} color="var(--brand)" />
-          </div>
-          <h3>Guided tutoring</h3>
-          <p>Break down complex problems into step-by-step logic explanations that help you truly understand the "why".</p>
-          
-          <div className="embedded-preview-box list-embed">
-            <div className="list-item-preview">
-              <span className="badge badge-brand list-index">1.</span>
-              <span>Identify the base case in recursion.</span>
-            </div>
-            <div className="list-item-preview">
-              <span className="badge badge-brand list-index">2.</span>
-              <span>Map the recursive step to subproblems.</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="tutoring-card card">
-          <div className="icon-wrapper">
-            <Award size={20} color="var(--brand)" />
-          </div>
-          <h3>Progress tracking</h3>
-          <p>Visualize your growth with detailed skill maps and completion stats as you master new concepts.</p>
-          
-          <div className="embedded-preview-box progress-embed">
-            <div className="progress-label-row">
-              <span className="p-concept">Mastery Score</span>
-              <span className="p-percent">75%</span>
-            </div>
-            <div className="progress-bar-bg">
-              <div className="progress-bar-fill" style={{ width: '75%' }} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. STUDENT QUOTE */}
-      <section className="quote-section text-center">
-        <div className="quote-box card">
-          <span className="large-quote-mark">&ldquo;</span>
-          <p className="quote-text">
-            CodeSage didn't just give me the answers—it taught me how to think like a developer. The step-by-step logic explanations turned complex data structures into something I could finally grasp.
-          </p>
-          
-          <div className="quote-author-profile">
-            <div className="author-avatar">
-              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100" alt="Alex Rivera Avatar" />
-            </div>
-            <h4 className="author-name">Alex Rivera</h4>
-            <p className="author-role">Computer Science Sophomore</p>
-          </div>
-        </div>
+          </>
+        )}
       </section>
     </div>
   );
