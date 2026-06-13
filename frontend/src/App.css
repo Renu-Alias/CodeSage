@@ -206,115 +206,63 @@
   font-weight: 700;
 }
 
-.dropdown-item-with-sub {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .dropdown-chevron {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-light);
+  margin-left: auto;
   transition: transform 0.2s;
 }
 
 .dropdown-chevron.open {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
 }
 
-/* Appearance flyout submenu */
-.appearance-trigger {
-  position: relative;
-}
-
-.appearance-flyout {
-  position: absolute;
-  right: calc(100% + 8px);
-  top: -1px;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-  min-width: 170px;
-  z-index: 1100;
-  overflow: hidden;
-  animation: dropdownFadeIn 0.15s ease-out;
-}
-
-.appearance-flyout-header {
-  padding: 8px 14px 6px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--text-light);
-  border-bottom: 1px solid var(--border);
-  background: #fafafa;
-}
-
-.appearance-flyout-item {
+.appearance-top-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 8px;
+}
+
+.appearance-top-row .dropdown-item-title {
+  margin-bottom: 0;
+}
+
+.appearance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-medium);
   cursor: pointer;
-  transition: background 0.12s;
+  transition: all 0.15s;
+  white-space: nowrap;
 }
 
-.appearance-flyout-item:not(:last-child) {
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.appearance-flyout-item:hover {
-  background: #f8f8ff;
-}
-
-.appearance-flyout-item.active {
+.appearance-pill:hover {
+  border-color: var(--brand);
+  color: var(--brand);
   background: var(--brand-light);
 }
 
-.appearance-flyout-icon {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f0f0ff;
-  border-radius: 8px;
-  color: var(--brand);
-  flex-shrink: 0;
-}
-
-.appearance-flyout-item.active .appearance-flyout-icon {
+.appearance-pill.active {
   background: var(--brand);
+  border-color: var(--brand);
   color: #fff;
 }
 
-.appearance-flyout-label {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-dark);
+.appearance-pill-dark {
+  margin: 6px 0 0 36px;
 }
 
-.appearance-flyout-item.active .appearance-flyout-label {
+.appearance-pill-dark:hover {
+  border-color: var(--brand);
   color: var(--brand);
-}
-
-.appearance-flyout-check {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--brand);
-}
-
-.dropdown-chevron-left {
-  font-size: 10px;
-  color: var(--text-light);
-  transition: transform 0.2s;
-}
-
-.dropdown-chevron-left.open {
-  transform: rotate(-90deg);
+  background: var(--brand-light);
 }
 
 .dropdown-item-icon {
@@ -3095,8 +3043,10 @@ body.dark-mode .dropdown-menu { background: #151526; border: 1px solid var(--bor
 body.dark-mode .dropdown-header { background: #1a1a30; color: var(--text-dark); }
 body.dark-mode .dropdown-item:hover { background: #1e1e3a; }
 body.dark-mode .dropdown-item-single.active { background: var(--brand-light); }
-body.dark-mode .appearance-submenu .dropdown-item-single.active { background: var(--brand-light); }
-body.dark-mode .appearance-submenu .dropdown-item-single.active .dropdown-item-title { color: var(--brand); }
+body.dark-mode .appearance-pill { border-color: var(--border); color: var(--text-medium); }
+body.dark-mode .appearance-pill:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+body.dark-mode .appearance-pill.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+body.dark-mode .appearance-pill-dark:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
 body.dark-mode .dropdown-item-single.active .dropdown-item-title { color: var(--brand); }
 body.dark-mode .dropdown-notif { border: 1px solid var(--border); }
 body.dark-mode .dropdown-footer { border-top: 1px solid var(--border); color: var(--text-medium); }
@@ -3136,9 +3086,10 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover { background: #3a3a54; }
   inset: 0;
   z-index: 9999;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   pointer-events: none;
+  padding-top: 80px;
   animation: fadeIn 0.2s ease-out;
 }
 .demo-modal {

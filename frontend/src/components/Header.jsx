@@ -141,36 +141,33 @@ export default function Header({ currentPage, setCurrentPage, isLoggedIn, setIsL
                         {settingsItems.map((s, i) =>
                           s.label === 'Appearance' ? (
                             <div
-                              className="dropdown-item dropdown-item-single appearance-trigger"
+                              className="dropdown-item dropdown-item-single"
                               key={i}
                               onClick={() => setShowAppearance(!showAppearance)}
                             >
                               <div className="dropdown-item-icon">{s.icon}</div>
-                              <div className="dropdown-item-content dropdown-item-with-sub">
-                                <div className="dropdown-item-title">{s.label}</div>
-                                <span className={`dropdown-chevron-left ${showAppearance ? 'open' : ''}`}>◂</span>
-                              </div>
-                              {showAppearance && (
-                                <div className="appearance-flyout" onClick={e => e.stopPropagation()}>
-                                  <div className="appearance-flyout-header">Theme</div>
-                                  <div
-                                    className={`appearance-flyout-item${theme === 'light' ? ' active' : ''}`}
-                                    onClick={() => { setTheme('light'); setSettingsOpen(false); setShowAppearance(false); }}
-                                  >
-                                    <div className="appearance-flyout-icon"><Sun size={15} /></div>
-                                    <div className="appearance-flyout-label">Light Mode</div>
-                                    {theme === 'light' && <span className="appearance-flyout-check">✓</span>}
-                                  </div>
-                                  <div
-                                    className={`appearance-flyout-item${theme === 'dark' ? ' active' : ''}`}
-                                    onClick={() => { setTheme('dark'); setSettingsOpen(false); setShowAppearance(false); }}
-                                  >
-                                    <div className="appearance-flyout-icon"><Moon size={15} /></div>
-                                    <div className="appearance-flyout-label">Dark Mode</div>
-                                    {theme === 'dark' && <span className="appearance-flyout-check">✓</span>}
-                                  </div>
+                              <div className="dropdown-item-content">
+                                <div className="appearance-top-row">
+                                  <span className="dropdown-item-title">{s.label}</span>
+                                  {showAppearance && (
+                                    <button
+                                      className={`appearance-pill${theme === 'light' ? ' active' : ''}`}
+                                      onClick={e => { e.stopPropagation(); setTheme('light'); setSettingsOpen(false); setShowAppearance(false); }}
+                                    >
+                                      <Sun size={13} /> Light
+                                    </button>
+                                  )}
+                                  <span className={`dropdown-chevron ${showAppearance ? 'open' : ''}`}>▾</span>
                                 </div>
-                              )}
+                                {showAppearance && (
+                                  <button
+                                    className={`appearance-pill appearance-pill-dark${theme === 'dark' ? ' active' : ''}`}
+                                    onClick={e => { e.stopPropagation(); setTheme('dark'); setSettingsOpen(false); setShowAppearance(false); }}
+                                  >
+                                    <Moon size={13} /> Dark
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           ) : (
                             <div className="dropdown-item dropdown-item-single" key={i} onClick={() => { s.onClick(); setSettingsOpen(false); }}>
